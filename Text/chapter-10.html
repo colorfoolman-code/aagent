@@ -1,0 +1,1247 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-numbering"><span class="num-string">10</span> </span><span class="chapter-title-text">Exploring the cognitive agent that thinks, monitors, and adapts</span></h1> 
+  </div> 
+  <div class="introduction-summary"> 
+   <h3 class="introduction-header"><span class="CharOverride-1">This chapter covers</span><span class="CharOverride-1"></span></h3> 
+   <ul> 
+    <li class="readable-text" id="p2"><span class="CharOverride-2">Understanding agent cognition and metacognition as engineering concepts</span></li> 
+    <li class="readable-text" id="p3"><span class="CharOverride-2">Mapping the mind into a cognitive agent architecture</span></li> 
+    <li class="readable-text" id="p4"><span class="CharOverride-2">Building a cognitive agent architecture</span></li> 
+    <li class="readable-text" id="p5"><span class="CharOverride-2">Implementing metacognitive processes</span></li> 
+   </ul> 
+  </div> 
+  <div class="readable-text" id="p6"> 
+   <p>At this point, we’ve built agents that can reason (CoT, ReAct, ToT), reflect on their mistakes (Reflexion), iterate toward goals (the agentic loop), and remember past interactions. Since each of those capabilities is powerful on its own, you might think that stacking reasoning patterns on top of each other will make an agent smarter. But the truth is, stacking them together just makes the agent more complicated. Think of the collection of agents we’ve built as a toolbox full of dull instruments. There is no craftsman to decide which to pick up and use. This chapter is about building the craftsman.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p7"> 
+   <p>When deploying agents into production, we see agents handle straightforward queries reliably. But the moment a user asks a question that requires combining information from multiple sources, recognizing contradictions in the retrieved content, or admitting that the agent does not have enough information to answer confidently, it produces a response that sounds authoritative but is wrong. The tools were fine. The retrieval was fine. The model was capable. What was missing was the agent’s ability to think about the problem before acting on it and to think about its own thinking (metacognition) while acting on it.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p8"> 
+   <p>In this chapter, we define cognition and metacognition in practical agent-­engineering terms. We draw on Minsky’s society of mind, Baars’ global workspace theory, and Kahneman’s system 1/system 2 framework to build a cognitive agent architecture. In this architecture, specialized modules share a common workspace, an attention mechanism routes control dynamically, and emergent behaviors such as curiosity, adaptive persistence, and self-aware uncertainty arise from the interaction of simple parts. All code uses the OpenAI Agents SDK and MCP servers, building directly on the agentic loop and reasoning patterns from previous chapters.</p> 
+  </div> 
+  <div class="readable-text" id="p9"> 
+   <h2 class=" readable-text-h2"><span class="num-string">10.1</span> Understanding agent cognition and metacognition as engineering concepts </h2> 
+  </div> 
+  <div class="readable-text" id="p10"> 
+   <p>Before we start building, we need to understand why what we have built so far is not enough. This section walks through the failure modes that reasoning patterns alone cannot fix, defines what cognition and metacognition mean for agents, and introduces three theoretical frameworks that will serve as our architectural blueprint.</p> 
+  </div> 
+  <div class="readable-text" id="p11"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.1.1</span> The five failure modes of capable-but-not-cognitive agents</h3> 
+  </div> 
+  <div class="readable-text" id="p12"> 
+   <p>Every practitioner who has shipped an agent into production has seen at least three of these five failure modes: a confident wrong answer, a broken record, a rigid plan, an overcommitted guess, and a shallow composition. These are not edge cases. They are the default behavior of agents that can reason but cannot think. Understanding them is the first step toward fixing them. Each one maps to a specific cognitive or metacognitive deficit that we will address with architecture rather than prompting, skills, or reasoning. For example, run your agent on 10 diverse queries and watch for these patterns in the logs. If you see any, the missing module explains why.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p13"> 
+   <p>Figure 10.1 maps each failure mode to the cognitive capability it lacks and the architectural component that addresses it. Study this diagram before reading the descriptions that follow. It is the diagnostic map for the rest of the chapter.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p14">  
+   <img alt="" src="../Images/CH10_F01_Lanham4.png" style="width: 100%; max-width: max-content;" width="895" height="667"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.1 The five production agent failure modes mapped to cognitive and metacognitive deficits</span></h5>
+  </div> 
+  <div class="readable-text" id="p15"> 
+   <p>Each failure mode in figure 10.1 flows from left to right: the observable behavior, the underlying cognitive deficit, and the architectural component that fixes it. Notice that the fixes are not prompting tricks. They are structural components that we will build in section 10.2. Let’s walk through each one.</p> 
+  </div> 
+  <div class="readable-text" id="p16"> 
+   <h4 class=" readable-text-h4">The confident wrong answer</h4> 
+  </div> 
+  <div class="readable-text" id="p17"> 
+   <p>The agent retrieves a table-of-contents page or a metadata record, treats it as authoritative content, and presents it as the answer. The reasoning chain looks clean. The output is garbage. This happens because the agent has no mechanism to evaluate the quality of its own evidence. It retrieved something, the retrieval scored highly on keyword match, and the agent dutifully synthesized a response from it. The missing capability is evidence evaluation. The fix is the <em>evaluation module</em>, a metacognitive component that assesses the quality and relevance of intermediate results before they reach the user.</p> 
+  </div> 
+  <div class="readable-text" id="p18"> 
+   <h4 class=" readable-text-h4">The broken record</h4> 
+  </div> 
+  <div class="readable-text" id="p19"> 
+   <p>The agent retries the same failed search query three times with identical phrasing, burning through iterations without progress. This is one of the most frustrating failure modes to watch in production logs. The agent is doing exactly what the agentic loop tells it to do—iterate until convergence—but it has no awareness that it is stuck. The missing capability is stagnation awareness. The fix is the <em>attention module</em>, which monitors iteration progress and redirects the cognitive cycle when it detects that the agent is spinning its wheels.</p> 
+  </div> 
+  <div class="readable-text" id="p20"> 
+   <h4 class=" readable-text-h4">The rigid plan</h4> 
+  </div> 
+  <div class="readable-text" id="p21"> 
+   <p>A user describes a scenario that contradicts the standard resolution path. The agent follows the standard path anyway because its plan was set at decomposition time and never revisited. This is the difference between a plan and a belief. Plans should be updated when evidence changes. The missing capability is model updating: the ability to revise the agent’s understanding of the problem mid-execution. The fix is to have the <em>planning module</em> operate in replanning mode, triggered by contradictory signals from the evaluation module.</p> 
+  </div> 
+  <div class="readable-text" id="p22"> 
+   <h4 class=" readable-text-h4">The overcommitted guess</h4> 
+  </div> 
+  <div class="readable-text" id="p23"> 
+   <p>The agent is asked about something it has no data on. Instead of signaling uncertainty, it hallucinates a plausible-sounding answer. This is arguably the most dangerous failure mode in production because it silently erodes user trust. The user does not know the agent was guessing. The missing capabilities are knowledge boundary detection and the ability to distinguish between knowing and generating. The fix is the <em>confidence gate</em>, a metacognitive check that prevents the agent from presenting results when its internal signals indicate low certainty. </p> 
+  </div> 
+  <div class="readable-text" id="p24"> 
+   <h4 class=" readable-text-h4">The shallow composition</h4> 
+  </div> 
+  <div class="readable-text" id="p25"> 
+   <p>The agent can perform lookups A and B separately, but when asked a question that requires composing them with a join or comparison, it treats it as a single flat query. It cannot invent a multistep tool workflow on its own. The missing capability is compositional reasoning. The fix starts with the <em>perception module</em>, which must recognize that the query requires composition. It then flows through the planning module, which must construct a novel multi-tool plan. </p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p26"> 
+    <h5 class=" callout-container-h5 readable-text-h5">The gap between reasoning and thinking</h5> 
+   </div> 
+   <div class="readable-text" id="p27"> 
+    <p>Reasoning patterns such as CoT and ReAct yield better answers to well-defined problems. Cognition enables agents to figure out what the problem is. Metacognition enables agents to know when they have figured something out and when they have not. The difference matters most when the problem is ambiguous, the evidence is contradictory, or the agent’s knowledge is incomplete, which describes most real-world production scenarios. </p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p28"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.1.2</span> From reasoning primitives to cognitive architecture</h3> 
+  </div> 
+  <div class="readable-text" id="p29"> 
+   <p>If you have read the reasoning and planning chapter, you know how to give an agent Chain-of-Thought, ReAct, Tree-of-Thoughts, Reflexion, and sequential thinking. Each of these is a powerful reasoning pattern. But here is the question none of them answer: When should an agent use which one?</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p30"> 
+   <p>A simple factual lookup does not need Tree-of-Thought. A complex, multistep troubleshooting problem should not be handled with a single Chain-of-Thought pass. An ambiguous query needs exploration before it needs planning, and none of these patterns know when they are failing.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p31"> 
+   <p>The reasoning patterns we explored are cognitive primitives—individual skills. This chapter is about architecture that decides which primitive to deploy, monitors whether it is working, and adapts when it is not. Think of it this way: the reasoning chapter taught the agent to use a hammer, a screwdriver, and a saw. This chapter teaches the agent to read blueprints and decide which tool the job needs.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p32"> 
+   <p>Figure 10.2 shows this distinction visually. On the left, reasoning patterns are applied in isolation. The developer picks the pattern at design time, and the agent uses it regardless of context. On the right, cognitive architecture selects, composes, and monitors reasoning patterns dynamically based on the problem at hand.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p33">  
+   <img alt="" src="../Images/CH10_F02_Lanham4.png" style="width: 100%; max-width: max-content;" width="888" height="744"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.2 Cognitive primitives vs. cognitive architecture, with reasoning primitives becoming a selection within the process</span></h5>
+  </div> 
+  <div class="readable-text intended-text" id="p34"> 
+   <p>The key difference in the figure is the feedback loop on the right side of the cognitive architecture. When the Evaluation component detects problems such as ambiguity or contradiction, control flows back to the attention mechanism, which can redirect the agent to a different strategy. On the left, on the static reasoning side, there is no feedback. The agent commits to a pattern and follows it through to completion, regardless of how well it works. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p35"> 
+   <p>This is the architectural gap we are going to close.</p> 
+  </div> 
+  <div class="readable-text" id="p36"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.1.3</span> Defining cognition for agents</h3> 
+  </div> 
+  <div class="readable-text" id="p37"> 
+   <p>Before we build anything, we need to be precise about what we mean by cognition in the context of agent systems. We are not making philosophical claims about machine consciousness. We are defining observable capabilities that we can engineer and measure.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p38"> 
+   <p>Agent cognition is the quality of the agent’s internal model of a task. A cognitive agent does not just process a query and produce a response. It builds a representation of what is being asked, reasons about how to approach it, and updates that representation as new information arrives. Four capabilities define cognitive agents:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p39"><em>Task decomposition</em> is the ability to break a novel problem into subtasks without being shown how. This goes beyond following a template. A cognitive agent encounters a problem it has not seen before and figures out what steps are needed.</li> 
+   <li class="readable-text" id="p40"><em>Dependency reasoning</em> is the ability to identify which subtasks depend on others and sequence them correctly. It is not enough to decompose a problem into three parts. The agent needs to know that part B requires the output of part A and that part C can run in parallel. </li> 
+   <li class="readable-text" id="p41"><em>Compositional tool use</em> is the ability to combine tools in configurations the agent was never explicitly shown. The agent has a search tool and a comparison tool. Nobody told it to chain them together for cross-referencing queries. A cognitive agent figures that out from the problem structure.</li> 
+   <li class="readable-text" id="p42"><em>Model updating</em> is the ability to revise understanding as new information arrives. The agent starts with a hypothesis about what the user needs. Midway through execution, new evidence contradicts that hypothesis. A cognitive agent updates its plan; a non-cognitive agent plows ahead.</li> 
+  </ul> 
+  <div class="readable-text" id="p43"> 
+   <p>Table 10.1 maps cognitive capabilities to agent behavior, showing what happens when each capability is present and absent. Each capability maps to supporting primitives, as shown in the table. The primitive defines the reasoning strategy the agent uses within its instructions.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p44"> 
+   <h5 class=" browsable-container-h5">Table 10.1 Agent cognitive capabilities</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-1"/> 
+     <col class="_idGenTableRowColumn-2"/> 
+     <col class="_idGenTableRowColumn-3"/> 
+     <col class="_idGenTableRowColumn-4"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-5"> 
+      <td class="No-Table-Style CellOverride-1"> <p class="_TableHead">Capability</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Present</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Absent</p> </td> 
+      <td class="No-Table-Style CellOverride-3"> <p class="_TableHead">Supporting primitive</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-4"> <p class="_TableBody">Task decomposition</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Agent invents novel subtask sequences</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Agent treats complex queries as flat lookups</p> </td> 
+      <td class="No-Table-Style CellOverride-6"> <p class="_TableBody">CoT, planning</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Dependency reasoning</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent sequences steps while respecting dependencies</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent executes steps in arbitrary order</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">ToT, sequential thinking</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Compositional tool use</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent chains tools in novel configurations</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent maps queries to single tool calls</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">ReAct</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody">Model updating</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Agent revises plan when evidence contradicts it</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Agent follows initial plan regardless</p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Reflexion, replanning</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p45"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.1.4</span> Defining metacognition for agents</h3> 
+  </div> 
+  <div class="readable-text" id="p46"> 
+   <p>If cognition is the quality of the agent’s thinking, metacognition is the agent’s ability to think about its own thinking. This is not a philosophical nicety; it is the most practically important capability for production agent systems. Metacognition for agents means three things:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p47"><em>Confidence calibration</em> is the extent to which an agent’s expressed confidence correlates with correctness. It is not whether the agent says, “I’m not sure,” which language models can be prompted to say about anything. Real confidence calibration means that the agent’s internal signals (token probabilities, retrieval scores, and evidence consistency) predict whether the output is correct or incorrect. Research from Wang et al. (2025) in the DMC framework showed that implicit confidence measures derived from token likelihoods are better predictors of correctness than verbal expressions of confidence. This is the gap we will exploit architecturally.</li> 
+   <li class="readable-text" id="p48"><em>Stagnation detection</em> is the agent’s ability to recognize when it is not making progress. A non-metacognitive agent will retry the same failing approach until it hits an iteration limit. A metacognitive agent notices after two iterations that its findings are not changing and pivots to a different strategy.</li> 
+   <li class="readable-text" id="p49"><em>Knowledge boundary awareness</em> is the extent to which an agent’s behavior changes when it operates outside its knowledge. The MetaMedQA benchmark (Nature Communications, 2025) tested this directly and found that models consistently provided confident answers even when the correct option was absent from the choices. The models could not tell when they did not know. Building knowledge boundary awareness into the architecture is how we fix this.</li> 
+  </ul> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p50"> 
+    <h5 class=" callout-container-h5 readable-text-h5">The implicit–explicit confidence gap</h5> 
+   </div> 
+   <div class="readable-text" id="p51"> 
+    <p>Research shows that LLMs’ internal uncertainty signals (token entropy, logprob distributions) predict correctness better than their verbal expressions of confidence. An agent saying “I’m confident” tells you almost nothing, but an agent whose token probabilities are high across its answer tokens is genuinely more likely to be correct. We will exploit this gap in section 10.3 when we build metacognitive monitoring.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p52"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.1.5</span> Three theoretical foundations</h3> 
+  </div> 
+  <div class="readable-text" id="p53"> 
+   <p>The cognitive agent architecture we are about to build is not invented from scratch. It draws on three well-established frameworks from cognitive science and psychology. Each one maps directly to an architectural component. We are not trying to replicate human cognition; we are borrowing design patterns from systems that demonstrably produce intelligent behavior.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p54"> 
+   <p>Figure 10.3 shows how each theoretical framework maps to a concrete component in our architecture. This is the bridge between theory and engineering that the rest of the cognitive architecture builds on.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p55">  
+   <img alt="" src="../Images/CH10_F03_Lanham4.png" style="width: 100%; max-width: max-content;" width="788" height="552"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.3 Three theoretical foundations of the mind mapped to agent architecture components</span></h5>
+  </div> 
+  <div class="readable-text" id="p56"> 
+   <p>In the figure, each vertical arrow represents a design principle from the theoretical foundation we are importing. On the left, Minsky tells us to build multiple specialized agent modules rather than one monolithic agent. In the middle, Baars tells us that those agent modules need a shared workspace to communicate. On the right, Kahneman tells us we need a routing mechanism that matches processing depth to problem complexity. Let us look at each theoretical foundation as it maps to our cognitive architecture.</p> 
+  </div> 
+  <div class="readable-text" id="p57"> 
+   <h4 class=" readable-text-h4">Minsky’s society of mind</h4> 
+  </div> 
+  <div class="readable-text" id="p58"> 
+   <p>Marvin Minsky argued that the mind is not a single intelligent process but a society of specialized agents. None of these agents is intelligent on its own, but their interactions produce intelligent behavior. No single neuron understands language. No single brain region solves math. Intelligence emerges from the interaction of many simple, specialized components.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p59"> 
+   <p>For agent architecture, the implication is clear: stop trying to build a single smart agent. Build multiple specialized agent modules: one that understands the problem, one that plans, one that executes, and one that evaluates. Then let intelligence emerge from their interaction. This is not the same as a multi-agent system where agents pass messages. It is a tighter integration in which agent modules share state and influence one another through a common medium.</p> 
+  </div> 
+  <div class="readable-text" id="p60"> 
+   <h4 class=" readable-text-h4">Baars’ global workspace theory</h4> 
+  </div> 
+  <div class="readable-text" id="p61"> 
+   <p>Bernard Baars proposed that consciousness works like a theater. Specialized neural processes operate backstage, each doing its own thing. But there is a single stage, the global workspace, where the most important signal at any given moment is broadcast to all other processes. This broadcast is what we experience as conscious attention.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p62"> 
+   <p>For agent architecture, this gives us the <em>cognitive workspac</em><em>e</em>—a shared state object that all agent modules read from and write to. The workspace is not a message queue. It is a living representation of the agent’s current cognitive state: what it knows, what it is trying to do, how confident it is, and what signals need attention. When the evaluation module writes “contradiction detected” to the workspace, every other module can see it. </p> 
+  </div> 
+  <div class="readable-text" id="p63"> 
+   <h4 class=" readable-text-h4">Kahneman’s system 1 and system 2</h4> 
+  </div> 
+  <div class="readable-text" id="p64"> 
+   <p>Daniel Kahneman’s framework describes two modes of thinking. System 1 is fast, automatic, and effortless: you recognize a face or read a word without trying. System 2 is slow, deliberate, and effortful: you solve a math problem or plan a vacation by thinking carefully.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p65"> 
+   <p>For agent architecture, this means not every query deserves the full cognitive treatment. A simple factual lookup should bypass planning and evaluation entirely, going straight from perception to execution to response. A complex, ambiguous, or contradictory query should trigger the full cognitive cycle, with planning, evaluation, and potential replanning. The attention module implements this routing. This is as much an efficiency argument as a capability argument. Unnecessary reasoning burns tokens, adds latency, and does not improve quality.</p> 
+  </div> 
+  <div class="readable-text" id="p66"> 
+   <h2 class=" readable-text-h2"><span class="num-string">10.2</span> Mapping the mind into a cognitive agent architecture</h2> 
+  </div> 
+  <div class="readable-text" id="p67"> 
+   <p>Now we are ready to build. This section presents each component of the architecture with code, starting with the shared workspace and moving through each specialized agent module. By the end, you will have all the pieces needed to assemble a working cognitive agent in section 10.3.</p> 
+  </div> 
+  <div class="readable-text" id="p68"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.1</span> Architecture overview</h3> 
+  </div> 
+  <div class="readable-text" id="p69"> 
+   <p>Figure 10.4 is the most important diagram for understanding the overall architecture of this cognitive agent. It shows the complete cognitive agent architecture with all seven components and their connections. Every code listing that follows implements one piece of this diagram. Refer to it whenever you need to see how a component fits into the whole.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p70">  
+   <img alt="" src="../Images/CH10_F04_Lanham4.png" style="width: 100%; max-width: max-content;" width="890" height="1050"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.4 The cognitive agent architecture shows the flow from the user’s initial query to the cognitive loop, which iterates through the modules.</span></h5>
+  </div> 
+  <div class="readable-text" id="p71"> 
+   <p>A lot is happening in the figure, so let us break it down layer by layer. At the center sits the cognitive workspace, the shared state that all modules read from and write to. This is the global workspace from Baars’ theory, implemented as a structured Pydantic model. It holds six categories of state: task representation (what the agent thinks it is being asked), active hypotheses (candidate strategies), intermediate results (what has been found so far), confidence state (how certain the agent is), execution history (what has been tried), and attention signals (flags that redirect the cognitive cycle).</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p72"> 
+   <p>Around the workspace, five specialized modules operate. The perception module reads the raw user query and populates the task representation. The planning module reads the task representation and proposes a strategy. The execution module carries out the plan by calling tools through MCP servers or internal functions. The evaluation module assesses the quality of the results and updates confidence. The attention module reads the workspace’s signals and decides which module runs next.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p73"> 
+   <p>The memory module sits alongside the workspace and connects to the official MCP memory server (modelcontextprotocol/server-memory). It proactively retrieves relevant experience before planning and records outcomes after evaluation. The agentic loop from chapter 9 wraps the entire system, driving iteration, convergence, and exit conditions.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p74"> 
+   <p>This is the society of mind in code. No single module is intelligent, but their interaction through the shared workspace produces behavior that none of them could produce alone.</p> 
+  </div> 
+  <div class="readable-text" id="p75"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.2</span> The cognitive workspace</h3> 
+  </div> 
+  <div class="readable-text" id="p76"> 
+   <p>The cognitive (global) workspace is the beating heart of the architecture and is akin to the agentic loop state. Every module reads from it. Every module writes to it. It is not a conversation history or a scratchpad. It is a structured representation of the agent’s current cognitive state: what it believes, how confident it is, what it has tried, and what needs attention.</p> 
+  </div> 
+  <div class="readable-text" id="p77"> 
+   <p>If you consider the <code>ResearchState</code> in the agentic loop chapter, the cognitive workspace will feel familiar, but it goes further. The <code>ResearchState</code> accumulated findings across iterations. The cognitive workspace maintains a model of the agent’s own reasoning process. It tracks not just what the agent has found but also how confident it is in those findings. It also tracks whether they contradict each other, and whether the current strategy is making progress.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p78"> 
+   <p>Listing 10.1 demonstrates the various Pydantic objects that compose the cognitive state, or workspace. This state is the structured communication channel that the agent modules share. It contains information such as the task type (<code>TaskType</code>), the current strategy (<code>StrategyType</code>), the attention signal (<code>AttentionSignal</code>), the finding or score (<code>Finding</code>), and a history of module interactions.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p79"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.1 01_cognitive_workspace.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from pydantic import BaseModel, Field
+from enum import Enum
+from typing import Optional
+
+class TaskType(str, Enum):
+    SIMPLE_LOOKUP = "simple_lookup"
+    MULTI_STEP = "multi_step"
+    CONTRADICTORY = "contradictory"
+    AMBIGUOUS = "ambiguous"
+    COMPOSITIONAL = "compositional"
+    UNKNOWN = "unknown"
+
+class StrategyType(str, Enum):
+    DIRECT = "direct"              #1
+    DECOMPOSE = "decompose"        #2
+    EXPLORE = "explore"            #3
+    HYPOTHESIS_TEST = "hypothesis_test"  #4
+
+class AttentionSignal(str, Enum):
+    NONE = "none"
+    LOW_CONFIDENCE = "low_confidence"
+    STAGNATION = "stagnation"
+    CONTRADICTION = "contradiction"
+    KNOWLEDGE_GAP = "knowledge_gap"
+    TASK_COMPLETE = "task_complete"
+
+class Finding(BaseModel):
+    content: str
+    source: str
+    relevance_score: float = 0.0
+    quality_note: str = ""
+
+class CognitiveWorkspace(BaseModel):
+    # Task representation
+    raw_query: str = ""
+    task_type: TaskType = TaskType.UNKNOWN
+    extracted_entities: list[str] = Field(default_factory=list)
+    complexity_estimate: float = 0.0   #5
+    ambiguities: list[str] = Field(default_factory=list)
+
+    # Active hypotheses
+    current_strategy: StrategyType = StrategyType.DIRECT
+    sub_goals: list[str] = Field(default_factory=list)
+    alternative_strategies: list[str] = Field(default_factory=list)
+
+    # Intermediate results
+    findings: list[Finding] = Field(default_factory=list)
+    memory_hits: list[str] = Field(default_factory=list)  #6
+
+    # Confidence state
+    confidence: float = 0.5          #7
+    confidence_trend: list[float] = Field(default_factory=list)
+
+    # Execution history
+    steps_taken: list[str] = Field(default_factory=list)
+    failed_approaches: list[str] = Field(default_factory=list)
+    iteration_count: int = 0
+
+    # Attention signals
+    active_signal: AttentionSignal = AttentionSignal.NONE
+    signal_source: str = ""</pre> 
+    <div class="code-annotations-overlay-container"> #1 Direct execution for simple queries (System 1) 
+     <br/>#2 Decomposes into subtasks for multistep problems 
+     <br/>#3 Explores to gather information before committing to a plan 
+     <br/>#4 Tests competing hypotheses when evidence is contradictory 
+     <br/>#5 Scales from 0.0 (trivial) to 1.0 (highly complex) 
+     <br/>#6 Past experience retrieved from the MCP memory server
+     <br/>#7 Starts at 0.5 (neutral) and moves toward 1.0 (confident) or 0.0 (uncertain)
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p80"> 
+   <p>The <code>active_signal</code> field is the most important piece. This field is the mechanism through which modules communicate urgency. When the evaluation module detects a contradiction, it sets <code>active_signal</code> to <code>CONTRADICTION</code>. When the attention module reads this signal, it routes control to the planning module for replanning instead of proceeding to the next execution step. This is the global workspace broadcast mechanism: any module can raise a signal, and the attention module decides what to do about it. </p> 
+  </div> 
+  <div class="readable-text" id="p81"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.3</span> The perception module</h3> 
+  </div> 
+  <div class="readable-text" id="p82"> 
+   <p>The perception module is the agent’s first contact with reality. It takes the raw user query and transforms it into a structured task representation in the workspace. This is not just parsing; it involves understanding and classifying the problem, extracting key entities, identifying ambiguities, and estimating the task’s complexity.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p83"> 
+   <p>The complexity estimate is particularly important because it determines how deeply the rest of the architecture engages. A complexity estimate below 0.3 might trigger the system 1 fast path, skip planning and evaluation, and go straight to execution. A complexity estimate above 0.7 triggers the full cognitive cycle. This is Kahneman’s dual-­process theory implemented as a routing decision.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p84"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.2 02_perception_module.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import Agent
+
+perception_agent = Agent(
+    name="Perception",
+    instructions="""You are the perception module of a cognitive agent.
+    Your job is to analyze a user query and produce a structured
+    understanding of the task BEFORE any action is taken.
+
+    For each query, determine:
+    1. task_type: Is this a simple_lookup, multi_step, contradictory,
+       ambiguous, or compositional problem?
+    2. extracted_entities: What are the key nouns, concepts, or
+       identifiers in the query?
+    3. complexity_estimate: From 0.0 (trivial) to 1.0 (highly complex).
+       Consider: number of steps needed, whether information must be
+       combined from multiple sources, whether the query contains
+       contradictions or ambiguity.
+    4. ambiguities: List anything in the query that could be
+       interpreted multiple ways.
+
+    Be honest about complexity. A question that looks simple but
+    requires cross-referencing is at least 0.5. A question containing
+    "but" or "however" or "already tried" is likely contradictory
+    and should be at least 0.6.
+
+    You do NOT answer the user's question. You only analyze it.""",
+    output_type=TaskRepresentation,    #1
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Structured output ensures perception always produces typed, parseable results.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p85"> 
+   <p>You can think of the perception module’s role as a form of triage applied to the initial user query, producing a task representation that classifies how the query will be processed.</p> 
+  </div> 
+  <div class="readable-text" id="p86"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.4</span> The planning module</h3> 
+  </div> 
+  <div class="readable-text" id="p87"> 
+   <p>The planning module reads the workspace’s task representation and proposes a strategy. This is where the cognitive architecture diverges most sharply from a standard agent. A standard agent has one approach: receive queries, call tools, and generate a response. The planning module selects from multiple strategies based on what the perception module found.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p88"> 
+   <p>Figure 10.5 shows the planning module’s strategy selection logic as a decision tree. The task type and complexity estimate from the perception module drive the selection. Notice that the <code>HYPOTHESIS_TEST</code> strategy is triggered only when the perception module flags contradictions. This is the architecture responding to the problem’s specific nature rather than applying a one-size-fits-all approach.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p89">  
+   <img alt="" src="../Images/CH10_F05_Lanham4.png" style="width: 100%; max-width: max-content;" width="913" height="995"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.5 Planning module strategy selection</span></h5>
+  </div> 
+  <div class="readable-text" id="p90"> 
+   <p>Figure 10.5 also shows a critical step: checking whether the memory module has surfaced relevant past experiences. If the knowledge graph contains entities related to the current problem, the planning module incorporates that experience into its strategy. A hypothesis-testing plan that knows “this type of problem was caused by connection pool exhaustion last time” will be more efficient than one starting from scratch.</p> 
+  </div> 
+  <div class="readable-text" id="p91"> 
+   <p>Listing 10.3 showcases the planning module agent instructions, in which the plan itself depends on the current task’s strategy. If memory hits (past task memories) are available from previous tasks, the agent will use them to accelerate planning. The output from this module is the <code>PlanOutput</code> (the plan) that will be executed.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p92"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.3 03_planning_module.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">planning_agent = Agent(
+    name="Planner",
+    instructions="""You are the planning module of a cognitive agent.
+    You receive a task representation from the perception module and
+    propose an execution strategy.
+
+    Select a strategy based on the task:
+    - DIRECT: For simple lookups with complexity &lt; 0.3. One tool call.
+    - DECOMPOSE: For multi-step problems. Break into ordered subtasks.
+      Identify which subtasks depend on others.
+    - EXPLORE: For ambiguous problems. Propose information-gathering
+      steps before committing to an approach.
+    - HYPOTHESIS_TEST: For contradictory scenarios. Generate 2-3
+      competing hypotheses and propose how to test each one.
+
+    If memory_hits are present in the workspace, use them to inform
+    your strategy. Past experience should accelerate planning, not
+    replace it.
+
+    Output a plan with: strategy_type, ordered list of sub_goals,
+    and any alternative_strategies worth keeping in reserve.""",
+    output_type=PlanOutput,
+)</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p93"> 
+   <p>The planning agent module is responsible for determining the cognitive strategy, reviewing memories, and using those, along with the strategy, to devise a plan. The output from this module directly drives the execution module.</p> 
+  </div> 
+  <div class="readable-text" id="p94"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.5</span> The execution module</h3> 
+  </div> 
+  <div class="readable-text" id="p95"> 
+   <p>The execution module is the simplest component in the cognitive architecture. It takes the current plan step from the workspace, executes it by calling tools through MCP servers or function calls, and writes the results back to the workspace. If you have built a ReAct agent before, this will feel familiar. The difference is context: the execution module operates in a richer environment, where its results are evaluated by the evaluation module before anything reaches the user.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p96"> 
+   <p>The key design choice here is result annotation. The execution module does not just return raw tool output. It wraps each result in a <em>finding object</em>, which includes a relevance score and a quality note. This metadata is what the evaluation module uses to assess whether the execution step advanced the task.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p97"> 
+   <p>Listing 10.4 shows a simple execution agent connected to a single MCP server (filesystem) for performing local search. As part of each tool execution, this agent outputs a finding metadata object that defines the content, source, relevance score, and quality note for the execution.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p98"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.4 04_execution_module.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import Agent, function_tool
+from agents.mcp import MCPServerStdio
+
+# Connect to domain-specific tools via MCP
+search_server = MCPServerStdio(
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-filesystem", "./docs"]  #1
+)
+
+execution_agent = Agent(
+    name="Executor",
+    instructions="""You are the execution module of a cognitive agent.
+    You receive a specific sub-goal from the current plan and execute
+    it using available tools.
+
+    For each result, provide:
+    - content: The relevant information you found
+    - source: Where it came from
+    - relevance_score: 0.0 to 1.0, how relevant to the sub-goal
+    - quality_note: Any concerns about the result quality
+      (e.g., "source is a table of contents, not actual content",
+       "result is partial", "high confidence match")
+
+    Be honest about quality. A retrieval that returns metadata
+    instead of content should get a low relevance_score and a
+    quality_note explaining why.""",
+    mcp_servers=[search_server],
+    output_type=Finding,
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Replace with your domain-specific MCP server (Brave Search, database, API, etc.)
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p99"> 
+   <p>The output finding object helps guide not only the evaluation module but also the cognitive process. A tool call that results in a poor response is now easy to identify.</p> 
+  </div> 
+  <div class="readable-text" id="p100"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.6</span> The evaluation module</h3> 
+  </div> 
+  <div class="readable-text" id="p101"> 
+   <p>The evaluation module is the metacognitive core of the architecture. It does not find information. It does not execute plans. It thinks about the thinking. After each execution step, the evaluation module reads the workspace and asks, “Is this working? Is the evidence consistent? Are we making progress? Should we continue or change course?”</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p102"> 
+   <p>This component addresses three of the five failure modes in section 10.1.1. The evidence quality assessment catches the confident wrong answer. Stagnation detection catches the broken record, and contradiction flagging catches the rigid plan. All these checks happen before the user sees anything.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p103"> 
+   <p>Listing 10.5 shows the evaluation module’s evaluation agent and output types. Evaluation is a key component of cognitive function. Without it, or if this stage performs poorly, response quality and completeness will directly reflect the problem.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p104"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.5 05_evaluation_module.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">class EvaluationResult(BaseModel):
+    progress_assessment: str        #1
+    consistency_check: bool         #2
+    confidence_delta: float         #3
+    contradictions: list[str] = Field(default_factory=list)
+    recommendation: str             #4
+
+evaluation_agent = Agent(
+    name="Evaluator",
+    instructions="""You are the evaluation module of a cognitive agent.
+    After each execution step, you assess the quality of the results
+    and the overall trajectory of the task.
+
+    Assess:
+    1. progress_assessment: Did this step advance us toward the goal?
+       Be specific about what was gained or not gained.
+    2. consistency_check: Are the new results consistent with previous
+       findings? If not, flag contradictions.
+    3. confidence_delta: Should confidence go up or down based on this
+       step? Return a value from -0.3 to +0.3.
+    4. contradictions: List any conflicts between new and existing
+       evidence.
+    5. recommendation: One of CONTINUE, REPLAN, ESCALATE, TERMINATE.
+       - CONTINUE: Progress is good, proceed with current plan.
+       - REPLAN: Evidence suggests current approach is wrong.
+       - ESCALATE: Agent cannot resolve this, surface uncertainty.
+       - TERMINATE: Goal is achieved with sufficient confidence.
+
+    Be ruthless about quality. A finding with a low relevance_score
+    or a quality_note flagging metadata should NOT increase confidence.
+    Two consecutive steps with no new information should trigger
+    REPLAN, not CONTINUE.""",
+    output_type=EvaluationResult,
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Narrative assessment of what this step accomplished
+     <br/>#2 False if new evidence contradicts existing findings
+     <br/>#3 Positive means more confident, negative means less. 
+     <br/>#4 The signal that drives the attention module’s routing
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p105"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Evaluation is not reflection</h5> 
+   </div> 
+   <div class="readable-text" id="p106"> 
+    <p>Reflexion (from the reasoning chapter) catches errors after a response is complete. The evaluation module monitors during execution, catching problems before they compound. Reflexion is post-hoc correction. Evaluation is real-time monitoring. Both are valuable, but evaluation prevents errors that Reflexion would otherwise have to fix after the fact.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p107"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.7</span> The attention module</h3> 
+  </div> 
+  <div class="readable-text" id="p108"> 
+   <p>The attention module is the component that makes this a cognitive architecture rather than just a multi-agent pipeline. It reads the workspace’s attention signals and decides which module gets control next. In the default case, it follows a standard cognitive cycle: perceive, plan, execute, evaluate. But it can break this cycle at any point based on signals from the workspace.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p109"> 
+   <p>Figure 10.6 shows the attention module’s routing logic. Keep this diagram in mind when debugging a cognitive agent. If the agent behaves unexpectedly, trace through this decision tree to understand why it took the path it did.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p110">  
+   <img alt="" src="../Images/CH10_F06_Lanham4.png" style="width: 100%; max-width: max-content;" width="927" height="725"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.6 Attention routing decision tree</span></h5>
+  </div> 
+  <div class="readable-text" id="p111"> 
+   <p>The fast path at the bottom of figure 10.6 is worth studying. When the perception module classifies a query as low-complexity, and the memory module has already surfaced a relevant past experience, the attention module can skip the entire cognitive cycle. It can then route directly to a response. This is system 1 in action. The agent recognizes a familiar problem and responds from experience without deliberation. In production, this path saves significant latency and token cost on routine queries.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p112"> 
+   <p>Listing 10.6 demonstrates the attention module, which, unlike the other modules, is controlled entirely by code. This makes all routing within attention deterministic and subject to the cognitive state that the other modules update in the global cognitive workspace.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p113"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.6 06_attention_module.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">def route_attention(workspace: CognitiveWorkspace) -&gt; str:
+    """Read workspace signals and determine next module."""
+
+    # System 1 fast path
+    if (workspace.complexity_estimate &lt; 0.3
+        and workspace.memory_hits
+        and workspace.active_signal == AttentionSignal.NONE):
+        return "FAST_RESPOND"                              #1
+
+    # Signal-driven routing
+    if workspace.active_signal == AttentionSignal.TASK_COMPLETE:
+        return "RESPOND"
+
+    if workspace.active_signal == AttentionSignal.STAGNATION:
+        workspace.failed_approaches.append(
+            workspace.current_strategy.value
+        )
+        return "META_PLAN"                                 #2
+
+    if workspace.active_signal == AttentionSignal.CONTRADICTION:
+        workspace.current_strategy = StrategyType.HYPOTHESIS_TEST
+        return "PLAN"                                      #3
+
+    if workspace.active_signal == AttentionSignal.LOW_CONFIDENCE:
+        if workspace.confidence &lt; 0.2:
+            return "ESCALATE"                              #4
+        return "PLAN"
+
+    if workspace.active_signal == AttentionSignal.KNOWLEDGE_GAP:
+        return "MEMORY"
+
+    # Default cognitive cycle
+    if not workspace.extracted_entities:
+        return "PERCEIVE"
+    if not workspace.sub_goals:
+        return "PLAN"
+    if workspace.iteration_count == 0 or workspace.active_signal == AttentionSignal.NONE:
+        return "EXECUTE"
+
+    return "EVALUATE"</pre> 
+    <div class="code-annotations-overlay-container"> #1 Bypasses the full cognitive cycle for simple, familiar problems 
+     <br/>#2 Meta-planning records the failed strategy to prevent repetition.
+     <br/>#3 Overrides the current strategy when contradictions are detected
+     <br/>#4 Below the minimum confidence threshold, stops trying and surfaces uncertainty
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p114"> 
+   <p>The hardcoded threshold values that control complexity and confidence state can be adjusted directly in code. These values represent static cognitive settings or personality. Although they can also be set dynamically, it is best to leave them static until your experience with this architecture becomes more solid.</p> 
+  </div> 
+  <div class="readable-text" id="p115"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.2.8</span> The memory module and the MCP memory server</h3> 
+  </div> 
+  <div class="readable-text" id="p116"> 
+   <p>The memory module provides the cognitive agent with persistent long-term memory using <code>@modelcontextprotocol/server-memory</code>, the official reference memory server from the MCP project. This server implements a local knowledge graph with three primitives: entities (the primary nodes), relations (directed connections between entities stored in active voice), and observations (discrete pieces of information attached to entities). No external database or embedding service is required; the server runs locally and persists in a JSON file. We previously explored the server in chapter 5 on memory and knowledge.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p117"> 
+   <p>This knowledge graph structure maps naturally to how the cognitive agent thinks about its own experience. Problem types become entities. Strategies that worked become observations attached to those entities. Relations connect related problem types, successful tool combinations, and known failure modes. Over time, the knowledge graph becomes the agent’s institutional memory: not a flat log of past interactions, but a structured model of what it has learned.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p118"> 
+   <p>Figure 10.7 shows how the memory module wraps the MCP memory server’s tools with a proactive cognitive layer. The three behaviors are proactive retrieval, experience recording, and relation building. They are what turn a simple knowledge graph into an active participant in the cognitive cycle.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p119">  
+   <img alt="" src="../Images/CH10_F07_Lanham4.png" style="width: 100%; max-width: max-content;" width="917" height="980"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.7 The memory module’s three behaviors layered on the MCP memory server</span></h5>
+  </div> 
+  <div class="readable-text" id="p120"> 
+   <p>Figure 10.7 reads top to bottom as a timeline. Before the planning module runs, the memory module searches the knowledge graph for entities related to the current task and injects any hits into the workspace. After the evaluation module completes its assessment, the memory module records the outcome. When the agent notices that a strategy has worked across different problem types, the memory module builds a relation connecting them.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p121"> 
+   <p>Here is the MCP server configuration:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p122"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">{
+"mcpServers": {
+"memory": {
+"command": "npx",
+"args": ["-y", "@modelcontextprotocol/server-memory"]
+}
+}
+}</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p123"> 
+   <p>Listing 10.7 demonstrates the memory module agent, with the respective memory MCP server backing the state. This module is responsible for saving experienced memories and for understanding and building relationships among task problems that share similar reasoning strategies. Building relationships in memory allows the cognitive architecture to understand and generalize across problems through captured experiences.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p124"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.7 07_memory_module.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents.mcp import MCPServerStdio
+
+memory_server = MCPServerStdio(
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-memory"]
+)
+
+memory_agent = Agent(
+    name="Memory",
+    instructions="""You are the memory module of a cognitive agent.
+    You manage long-term experience using a knowledge graph.
+
+    You have three responsibilities:
+
+    PROACTIVE RETRIEVAL: When given extracted entities from a task,
+    use search_nodes to find relevant past experience. Return any
+    matching entities and their observations as memory_hits.
+
+    EXPERIENCE RECORDING: When given a completed task with its
+    evaluation result, record the experience:
+    - If the problem type is new, use create_entities to add it,
+      then add_observations with the strategy used and outcome.
+    - If the problem type exists, use add_observations to append
+      the new strategy and outcome.
+    - Always record both successes and failures. Failed approaches
+      are valuable -- they prevent the agent from repeating mistakes.
+
+    RELATION BUILDING: When you notice that two problem entities
+    share a common strategy or resolution pattern, use
+    create_relations to capture that structural knowledge.
+    Example: create_relations between "timeout_under_load" and
+    "connection_pool_exhaustion" with relation
+    "often_co_occurs_with".
+
+    Be concise in observations. Store the strategy name, the
+    outcome (success/failure), and one sentence about why.""",
+    mcp_servers=[memory_server],
+)</pre>  
+   </div> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p125"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Why a knowledge graph, not a vector store</h5> 
+   </div> 
+   <div class="readable-text" id="p126"> 
+    <p>The reference MCP memory server uses a knowledge graph rather than vector embeddings. This is a deliberate tradeoff. Vector stores find things that look similar. Knowledge graphs find things that are structurally related. For the cognitive agent, structural relationships matter more than surface similarity. Knowing that “timeout errors under load” and “connection pool exhaustion” are related problem types (via a shared relation) is more useful than knowing they have similar embedding vectors. Readers who need semantic search over large memory stores can swap in community MCP memory servers such as mcp-mem0 or mcp-memory-service without changing the cognitive architecture, since the MCP interface remains the same.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p127"> 
+   <h2 class=" readable-text-h2"><span class="num-string">10.3</span> Building and running the cognitive agent</h2> 
+  </div> 
+  <div class="readable-text" id="p128"> 
+   <p>We have all the pieces. Now we assemble them into a working system, run it on a real scenario, and implement the metacognitive monitoring patterns that make the architecture production-ready.</p> 
+  </div> 
+  <div class="readable-text" id="p129"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.1</span> The cognitive loop</h3> 
+  </div> 
+  <div class="readable-text" id="p130"> 
+   <p>The cognitive loop is where the architecture from section 10.2 meets the agentic loop from chapter 9. The outer L2 loop handles iteration, convergence, and exit conditions. Cognitive architecture handles the quality of processing within each iteration. The attention module mediates between them.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p131"> 
+   <p>Figure 10.8 shows this layering. The agentic loop drives the macro-level iteration (“keep going or stop”). The cognitive cycle drives the micro-level processing (“what to do next within this iteration”). The attention module sits at the boundary, translating evaluation signals into routing decisions.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p132">  
+   <img alt="" src="../Images/CH10_F08_Lanham4.png" style="width: 100%; max-width: max-content;" width="902" height="1047"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 10.8 The cognitive loop layered on the agentic loop</span></h5>
+  </div> 
+  <div class="readable-text" id="p133"> 
+   <p>The inner cognitive cycle in figure 10.8 can run multiple times within a single iteration of the agentic loop. If the evaluation module raises a signal (stagnation, contradiction, or low confidence), the attention module routes to another module within the same iteration. Only when a step completes without raising a signal does control return to the agentic loop for convergence checking. This means a single iteration can include perception, planning, execution, evaluation, replanning, and re-execution, all driven by the workspace signals. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p134"> 
+   <p>Listing 10.8 shows the <code>run_cognitive_loop</code> function. This loop executes the inner cognitive cycle and routes signals through the attention module or to the respective agent modules based on the routing output.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p135"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.8 08_cognitive_loop.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">async def run_cognitive_loop(
+    query: str,
+    max_iterations: int = 10,
+    confidence_threshold: float = 0.8,
+    max_cognitive_steps: int = 5,          #1
+):
+    workspace = CognitiveWorkspace(raw_query=query)
+
+    async with memory_server, search_server:
+        for i in range(max_iterations):
+            workspace.iteration_count = i
+
+            # Inner cognitive cycle
+            for step in range(max_cognitive_steps):
+                next_module = route_attention(workspace)
+
+                if next_module == "FAST_RESPOND":
+                    return build_response(workspace)     #2
+
+                if next_module == "RESPOND":
+                    return build_response(workspace)
+
+                if next_module == "ESCALATE":
+                    return build_uncertain_response(workspace)  #3
+
+                if next_module == "PERCEIVE":
+                    result = await Runner.run(
+                        perception_agent,
+                        input=workspace.raw_query
+                    )
+                    update_workspace_perception(workspace, result)
+
+                elif next_module == "MEMORY":
+                    result = await Runner.run(
+                        memory_agent,
+                        input=format_memory_query(workspace)
+                    )
+                    update_workspace_memory(workspace, result)
+
+                elif next_module == "PLAN":
+                    result = await Runner.run(
+                        planning_agent,
+                        input=format_planning_input(workspace)
+                    )
+                    update_workspace_plan(workspace, result)
+
+                elif next_module == "EXECUTE":
+                    result = await Runner.run(
+                        execution_agent,
+                        input=format_execution_input(workspace)
+                    )
+                    update_workspace_execution(workspace, result)
+
+                elif next_module == "EVALUATE":
+                    result = await Runner.run(
+                        evaluation_agent,
+                        input=format_evaluation_input(workspace)
+                    )
+                    update_workspace_evaluation(workspace, result)
+
+                    if workspace.active_signal == AttentionSignal.TASK_COMPLETE:
+                        break                            #4
+
+                workspace.active_signal = AttentionSignal.NONE  #5
+
+            # Check convergence at the agentic loop level
+            if workspace.confidence &gt;= confidence_threshold:
+                break
+
+        # Record experience in memory after completion
+        await record_experience(workspace)               #6
+        return build_response(workspace)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Limits the inner cognitive cycle to prevent runaway within a single iteration 
+     <br/>#2 The system 1 fast path returns immediately without full cognitive processing. 
+     <br/>#3 Graceful degradation: presents uncertainty rather than hallucinating 
+     <br/>#4 Breaks inner cycle when evaluation marks task complete 
+     <br/>#5 Resets signal after processing to prevent infinite signal loops 
+     <br/>#6 Always record the outcome in the knowledge graph, success or failure.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p136"> 
+   <p>Refer back to chapter 9 if you need a refresher on the components and operation of an agentic loop. This code replaces the L1 internal agent loop with the cognitive loop architecture. It also layers the L2 attention module and routing on top to control the outer loop.</p> 
+  </div> 
+  <div class="readable-text" id="p137"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.2</span> A complete cognitive agent with MCP</h3> 
+  </div> 
+  <div class="readable-text" id="p138"> 
+   <p>You can review the entire composed cognitive architecture in listings 10.1 through 10.8. This code can run to demonstrate how the architecture works in practice. Be sure to review the OpenAI dashboard traces after a run to see how it all works.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p139"> 
+   <p>This listing assembles all the modules into a complete working system. It connects two MCP servers: the official memory server for long-term knowledge and a filesystem server for domain tools. It initializes the workspace and runs the cognitive loop on a concrete query.</p> 
+  </div> 
+  <div class="readable-text" id="p140"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.3</span> Walkthrough: Watching the cognitive cycle in action</h3> 
+  </div> 
+  <div class="readable-text" id="p141"> 
+   <p>To see the architecture earn its complexity, we need a query that a flat ReAct agent would get wrong. Consider this:</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p142"> 
+   <p>“A user reports that their deployment pipeline fails intermittently, but only during high-traffic periods. The standard fix (increasing timeout thresholds) was already applied and did not resolve the problem.”</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p143"> 
+   <p>A standard agent would search for “deployment pipeline timeout failure,” find documentation about timeout configuration, and present it as the answer. But the user already tried that. The standard answer is wrong by definition because the user told us it did not work.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p144"> 
+   <p>Here is how the cognitive agent handles it, step by step:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p145"><em>Perceptio</em><em>n</em>—The perception module classifies this as <code>TaskType.CONTRADICTORY</code> with a complexity estimate of 0.75. It extracts entities: “deployment pipeline,” “intermittent failure,” “high-traffic,” and “timeout thresholds.” It flags one ambiguity: “intermittent” could mean random or load-dependent. The phrase “only during high-traffic” clarifies this, but the agent notes it. The active signal remains <code>NONE</code>.</li> 
+   <li class="readable-text" id="p146"><em>Memory retrieva</em><em>l</em>—The attention module sees high complexity and routes to <code>MEMORY</code> before planning. The memory module searches the knowledge graph for entities matching “deployment,” “intermittent,” and “timeout.” It finds a past entity—<code>connection_pool_exhaustion</code> with an observation: “caused intermittent failures under load, superficially resembled timeout problems, resolved by increasing <code>max_connections</code>.” This memory hit gets injected into the workspace.</li> 
+   <li class="readable-text" id="p147"><em>Plannin</em><em>g</em>—The planning module reads the contradictory task type and selects the <code>HYPOTHESIS_TEST</code> strategy. Informed by the memory hit, it generates three hypotheses: (1) connection pool exhaustion under concurrent load, (2) race conditions in health check probes, and (3) resource contention between pipeline stages. It proposes testing each hypothesis by searching for documentation on concurrent connection limits, health check configuration, and resource allocation.</li> 
+   <li class="readable-text" id="p148"><em>Execution (first hypothesis</em><em>)</em>—The execution module searches for documentation on the concurrent connection limit. It finds relevant content about default connection pool sizes and their behavior under load. Relevance score: 0.8. Quality note: “content is from official documentation and directly relevant.”</li> 
+   <li class="readable-text" id="p149"><em>Evaluatio</em><em>n</em>—The evaluation module assesses: progress is good; consistency is fine (new evidence supports hypothesis 1); and the confidence delta is +0.15. No contradictions. Recommendation: <code>CONTINUE</code>. Workspace confidence moves from 0.5 to 0.65.</li> 
+   <li class="readable-text" id="p150"><em>Execution (second hypothesis</em><em>)</em>—The execution module searches for health check race conditions. It finds a blog post about health check timing under load. Relevance score: 0.5. Quality note: “source is community blog, partially relevant.”</li> 
+   <li class="readable-text" id="p151"><em>Evaluatio</em><em>n</em>—Progress is moderate, and evidence is weaker for hypothesis 2. Confidence delta is +0.05. Recommendation: <code>CONTINUE</code>.</li> 
+   <li class="readable-text" id="p152"><em>Final synthesi</em><em>s</em>—After testing all hypotheses, the Evaluation Module signals <code>TASK_COMPLETE</code>. The agent presents a response that acknowledges that the user has already tried the timeout fix and ranks connection pool exhaustion as the most likely alternative cause (supported by both fresh retrieval and past experience). The response also suggests specific diagnostic steps for each hypothesis.</li> 
+   <li class="readable-text" id="p153"><em>Memory recordin</em><em>g</em>—The memory module records a new entity “intermittent_­pipeline_failure_under_load” with observations about the hypothesis testing results. It creates a relation: “intermittent_pipeline_failure_under_load” shares_strategy_with “connection_pool_exhaustion.”</li> 
+  </ol> 
+  <div class="readable-text" id="p154"> 
+   <p>The next time someone asks about intermittent failures under load, the memory module will surface both entities, and the planning module will start with higher confidence.</p> 
+  </div> 
+  <div class="readable-text" id="p155"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.4</span> Confidence-gated execution</h3> 
+  </div> 
+  <div class="readable-text" id="p156"> 
+   <p>Confidence gating is the simplest and most useful metacognitive pattern. Before presenting any response to the user, the agent checks whether its confidence warrants presentation. This is not a verbal check (“I think…”). It is a structural check against the workspace’s confidence state, which the evaluation module updates throughout the cognitive cycle.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p157"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.9 10_confidence_gate.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">class GateDecision(str, Enum):
+    PRESENT = "present"                #1
+    GATHER_MORE = "gather_more"        #2
+    SIGNAL_UNCERTAINTY = "signal_uncertainty"  #3
+
+def check_confidence_gate(workspace: CognitiveWorkspace) -&gt; GateDecision:
+    # Hard threshold: never present below 0.3
+    if workspace.confidence &lt; 0.3:
+        return GateDecision.SIGNAL_UNCERTAINTY
+
+    # Soft threshold: try gathering more if between 0.3 and 0.6
+    if workspace.confidence &lt; 0.6:
+        if workspace.iteration_count &lt; 3:          #4
+            return GateDecision.GATHER_MORE
+        return GateDecision.SIGNAL_UNCERTAINTY
+
+    # Check for unresolved contradictions
+    if workspace.active_signal == AttentionSignal.CONTRADICTION:
+        return GateDecision.GATHER_MORE
+
+    # Check confidence trend: declining confidence is a red flag
+    if len(workspace.confidence_trend) &gt;= 3:
+        recent = workspace.confidence_trend[-3:]
+        if all(recent[i] &gt; recent[i+1] for i in range(2)):  #5
+            return GateDecision.GATHER_MORE
+
+    return GateDecision.PRESENT</pre> 
+    <div class="code-annotations-overlay-container"> #1 Safe to present the response
+     <br/>#2 Confidence is borderline; gathers more information before deciding
+     <br/>#3 Not confident enough; explicitly signals uncertainty to the user
+     <br/>#4 Only try gathering more if we have iteration budget remaining. 
+     <br/>#5 Three consecutive confidence drops mean something is going wrong.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p158"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.5</span> Stagnation detection and strategy pivoting</h3> 
+  </div> 
+  <div class="readable-text" id="p159"> 
+   <p>Stagnation detection catches the “broken record” failure mode: the agent is iterating but not making progress. The findings from the last two execution steps overlap significantly, or the confidence has flatlined. Without stagnation detection, the agent continues until it hits the iteration limit, wasting tokens and time. </p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p160"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.10 11_stagnation_detector.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">def detect_stagnation(workspace: CognitiveWorkspace) -&gt; bool:
+    # Need at least 2 findings to compare
+    if len(workspace.findings) &lt; 2:
+        return False
+
+    # Check content overlap between last two findings
+    last = workspace.findings[-1].content.lower().split()
+    prev = workspace.findings[-2].content.lower().split()
+    overlap = len(set(last) &amp; set(prev)) / max(len(set(last)), 1)
+    if overlap &gt; 0.7:                                #1
+        workspace.active_signal = AttentionSignal.STAGNATION
+        workspace.signal_source = "content_overlap"
+        return True
+
+    # Check confidence plateau
+    if len(workspace.confidence_trend) &gt;= 3:
+        recent = workspace.confidence_trend[-3:]
+        spread = max(recent) - min(recent)
+        if spread &lt; 0.05:                            #2
+            workspace.active_signal = AttentionSignal.STAGNATION
+            workspace.signal_source = "confidence_plateau"
+            return True
+
+    return False</pre> 
+    <div class="code-annotations-overlay-container"> #1 More than 70% word overlap means the agent is finding the same things.
+     <br/>#2 Confidence moving less than 0.05 across three steps means no real progress.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p161"> 
+   <p>When stagnation is detected, the attention module routes to <code>META_PLAN</code>. This is a replanning step in which the planning module receives the constraint “previous approach failed” along with the list of <code>failed_approaches</code> from the workspace. This prevents the planner from proposing the same strategy again.</p> 
+  </div> 
+  <div class="readable-text" id="p162"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.6</span> Knowledge boundary awareness</h3> 
+  </div> 
+  <div class="readable-text" id="p163"> 
+   <p>Knowledge boundary awareness is the “knowing what you don’t know” pattern. When the agent detects that it is operating outside its training and retrieval coverage, it shifts into graceful degradation mode. This is the fix for the “overcommitted guess” failure mode.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p164"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 10.11 12_boundary_awareness.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">class KnowledgeBoundary(str, Enum):
+    WITHIN = "within_knowledge"
+    EDGE = "edge_of_knowledge"
+    OUTSIDE = "outside_knowledge"
+
+def assess_knowledge_boundary(
+    workspace: CognitiveWorkspace
+) -&gt; KnowledgeBoundary:
+    signals = []
+
+    # Check retrieval quality
+    if workspace.findings:
+        avg_relevance = sum(
+            f.relevance_score for f in workspace.findings
+        ) / len(workspace.findings)
+        signals.append(avg_relevance)
+    else:
+        signals.append(0.0)                         #1
+
+    # Check memory coverage
+    if workspace.memory_hits:
+        signals.append(0.8)                         #2
+    else:
+        signals.append(0.2)
+
+    # Check confidence state
+    signals.append(workspace.confidence)
+
+    avg_signal = sum(signals) / len(signals)
+
+    if avg_signal &gt; 0.6:
+        return KnowledgeBoundary.WITHIN
+    elif avg_signal &gt; 0.3:
+        return KnowledgeBoundary.EDGE
+    else:
+        workspace.active_signal = AttentionSignal.LOW_CONFIDENCE
+        return KnowledgeBoundary.OUTSIDE</pre> 
+    <div class="code-annotations-overlay-container"> #1 No findings at all is a strong signal that we are outside known territory.
+     <br/>#2 Memory hits suggest the agent has seen related problems before.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p165"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Metacognition is the most valuable production feature</h5> 
+   </div> 
+   <div class="readable-text" id="p166"> 
+    <p>In production agent systems, users can tolerate “I don’t know,” but they cannot tolerate confidently wrong answers. Metacognitive monitoring is the difference between an agent that builds trust over time and one that loses it catastrophically with its first bad answer.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p167"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.3.7</span> Emergent behaviors</h3> 
+  </div> 
+  <div class="readable-text" id="p168"> 
+   <p>The four behaviors described here are not explicitly programmed into any single module. They emerge from the interaction of specialized modules through the shared workspace and the accumulating knowledge graph. This is Minsky’s society of mind thesis playing out in code:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p169"><em>Curiosit</em><em>y</em>—When the evaluation module flags low confidence, and the memory module finds no relevant entities in the knowledge graph, the attention signal <code>KNOWLEDGE_GAP</code> fires. This routes control to the memory module, which broadens its search. If that fails, the planning module generates exploratory subgoals to gather information the agent was not explicitly asked for. The agent appears to “wonder” about adjacent questions, pulling in context that was not in the original query but turns out to be relevant.</li> 
+   <li class="readable-text" id="p170"><em>Adaptive persistenc</em><em>e</em>—When execution fails and stagnation detection fires, the attention module routes to <code>META_PLAN</code> with the failed strategy recorded in the workspace. The planning module generates an alternative approach with the constraint “do not repeat what failed.” The memory module records the failed approach so that the approach will not be repeated in future sessions. The agent appears to “learn from failure” both within and across tasks.</li> 
+   <li class="readable-text" id="p171"><em>Selective dept</em><em>h</em>—The perception module classifies simple queries as low-­complexity, and the attention module routes them to the fast path. If the memory module has a high-confidence match to the query, the agent responds from memory without executing any tools. In production testing, simple queries via the fast path complete 3x to 5x faster and consume 3x to 5x fewer tokens than the full cognitive cycle, with no measurable quality reduction. This is Kahneman’s system 1: fast, automatic, and efficient for familiar problems.</li> 
+   <li class="readable-text" id="p172"><em>Graceful degradatio</em><em>n</em>—When cognitive resources are exhausted (iteration limit approached, confidence below threshold, no relevant knowledge), the confidence gate prevents the agent from presenting uncertain results as facts. Instead, the agent presents whatever partial information it has, explicitly marks uncertain claims, and suggests next steps for the user. The memory module records the boundary encounter, so future queries in the same area trigger earlier uncertainty signals. The agent gets better at knowing what it does not know.</li> 
+  </ul> 
+  <div class="readable-text" id="p173"> 
+   <h2 class=" readable-text-h2"><span class="num-string">10.4</span> Measuring cognitive capability and looking ahead</h2> 
+  </div> 
+  <div class="readable-text" id="p174"> 
+   <p>Rather than a formal benchmark, this section provides a practical diagnostic framework you can run against your own agents. Each test category corresponds to one of the five failure modes from section 10.1.1, with specific test cases and pass/fail criteria, as shown in table 10.2.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p175"> 
+   <h5 class=" browsable-container-h5">Table 10.2 Evaluating five agentic failure modes against cognitive agent architecture</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-7"/> 
+     <col class="_idGenTableRowColumn-8"/> 
+     <col class="_idGenTableRowColumn-9"/> 
+     <col class="_idGenTableRowColumn-10"/> 
+     <col class="_idGenTableRowColumn-11"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-5"> 
+      <td class="No-Table-Style CellOverride-1"> <p class="_TableHead">Test category</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Test case</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Pass criteria</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Failure indicator</p> </td> 
+      <td class="No-Table-Style CellOverride-3"> <p class="_TableHead">Investigate</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-12"> 
+      <td class="No-Table-Style CellOverride-4"> <p class="_TableBody">Evidence evaluation</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Provide a query where retrieval returns a table of contents page.</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Agent flags low-­quality evidence and does not cite metadata as content</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Agent presents TOC content as an answer</p> </td> 
+      <td class="No-Table-Style CellOverride-6"> <p class="_TableBody">Evaluation Module quality assessment</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Stagnation awareness</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Provide a query with no good search results.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent pivots strategy within three iterations</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent repeats same query three or more times</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Attention Module signal routing</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-12"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Model updating</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Provide a query; then, mid-­conversation, contradict the premise.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent revises plan based on new information</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent continues original plan</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Planning Module replanning</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Knowledge boundaries</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Ask about a topic with no coverage in tools or memory.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent signals uncertainty within two iterations</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Agent hallucinates plausible answer</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Confidence gate thresholds</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody">Compositional reasoning</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Ask a question requiring two tool calls with a join.</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Agent decomposes into two calls and combines results</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Agent treats as single flat query</p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Perception Module complexity estimation</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p176"> 
+   <p>Run these five tests against your agent. If it fails more than two tests, the cognitive architecture will provide measurable improvement. If it passes all five, you may not need the full architecture; the individual reasoning patterns from the previous chapter may be sufficient.</p> 
+  </div> 
+  <div class="readable-text" id="p177"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.4.1</span> Cognitive efficiency metrics</h3> 
+  </div> 
+  <div class="readable-text" id="p178"> 
+   <p>There are four metrics to track in production:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p179"><em>Cognitive efficiency</em> measures the number of steps taken relative to the optimal number for a given task type. If a simple lookup takes six cognitive steps when it should take two, the attention module’s fast path needs tuning. </li> 
+   <li class="readable-text" id="p180"><em>Metacognitive calibration</em> measures the correlation between the agent’s confidence and actual correctness over time. Plot confidence on the <em>x</em>-axis and accuracy on the <em>y</em>-axis. A well-calibrated agent produces a diagonal line. A poorly calibrated agent is confident when wrong or uncertain when right.</li> 
+   <li class="readable-text" id="p181"><em>Adaptation rate</em> measures how quickly the agent pivots when its initial approach fails. Count the number of iterations between stagnation detection and a successful strategy pivot. Lower is better.</li> 
+   <li class="readable-text" id="p182"><em>Knowledge boundary</em> accuracy measures whether the agent correctly identifies when it is outside its coverage. Track the rate of false positives (flagging uncertainty on easy questions) and false negatives (presenting hallucinated answers with confidence).</li> 
+  </ul> 
+  <div class="readable-text" id="p183"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.4.2</span> Before and after: Measuring the effect</h3> 
+  </div> 
+  <div class="readable-text" id="p184"> 
+   <p>Run the diagnostic test suite from section 10.4.1 against two configurations: a standard ReAct agent and the cognitive agent on identical queries. Measure answer correctness, confidence calibration, graceful degradation rate (how often the agent signals uncertainty when it should), and average tokens consumed.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p185"> 
+   <p>Then run a second comparison: the cognitive agent with an empty knowledge graph (first session) versus the same agent after 20 completed tasks (populated graph). This comparison demonstrates the compounding returns from recording experience. The agent with accumulated experience should show higher confidence calibration, faster resolution of familiar problem types, and fewer stagnation events.</p> 
+  </div> 
+  <div class="readable-text" id="p186"> 
+   <h3 class=" readable-text-h3"><span class="num-string">10.4.3</span> The road to more general agents</h3> 
+  </div> 
+  <div class="readable-text" id="p187"> 
+   <p>The cognitive architecture we built in this chapter is still narrow in one important sense: the modules were configured for technical troubleshooting scenarios. But the architecture itself is domain-agnostic. The cognitive workspace, the attention module, the evaluation module, and the confidence-gating patterns do not care about the domain they operate in. Swap the perception module’s task type classifications, change the execution module’s MCP servers, and update the planning module’s strategy descriptions. With those changes, the same cognitive infrastructure can support a completely different domain.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p188"> 
+   <p>This is the practical path toward more general agent capabilities: not bigger models, not more training data, but modular cognitive architectures where reasoning, monitoring, memory, and adaptation are separate concerns that can be independently improved and recombined. The ARC-AGI-2 benchmark tests exactly this kind of compositional generalization. While our architecture will not pass it, the design principles point in the same direction: intelligence emerges from the composition of capabilities, not from the scale of any single capability.</p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p189"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Generalization is architectural, not parametric</h5> 
+   </div> 
+   <div class="readable-text" id="p190"> 
+    <p>The path to more capable agents is not just bigger models with more parameters. It is a modular cognitive architecture in which reasoning, monitoring, memory, and adaptation are separate concerns that can be independently improved and recombined. The cognitive agent architecture in this chapter is a step on that path.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p191"> 
+   <h2 class=" readable-text-h2"><span class="num-string">10.5</span> Exercises</h2> 
+  </div> 
+  <div class="readable-text" id="p192"> 
+   <p><strong>Exercise 1: Build a cognitive workspace.</strong><strong></strong></p> 
+  </div> 
+  <div class="readable-text" id="p193"> 
+   <p><em>Objectiv</em><em>e</em>: Implement the <code>CognitiveWorkspace</code> from listing 10.1, and populate it from sample queries.</p> 
+  </div> 
+  <div class="readable-text" id="p194"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p195">Create<code> </code>exercise1_workspace.py<code> </code>using the <code>CognitiveWorkspace</code> Pydantic model.</li> 
+   <li class="readable-text" id="p196">Write a perception function that takes a raw user query and populates the workspace’s task representation fields.</li> 
+   <li class="readable-text" id="p197">Test with three queries of varying complexity: a simple factual lookup, a multistep troubleshooting question, and a contradictory scenario.</li> 
+   <li class="readable-text" id="p198">Print the workspace state after perception for each query. Note how the <code>task_type</code> and <code>complexity_estimate</code> differ.</li> 
+  </ol> 
+  <div class="readable-text" id="p199"> 
+   <p><em>Expected duration</em>: 15 min</p> 
+  </div> 
+  <div class="readable-text" id="p200"> 
+   <p><strong>Exercise 2: Implement the evaluation module.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p201"> 
+   <p><em>Objectiv</em><em>e</em>: Build the metacognitive evaluation module, and test it against agent outputs.</p> 
+  </div> 
+  <div class="readable-text" id="p202"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p203">Create exercise2_evaluation.py using the evaluation agent from listing 10.5.</li> 
+   <li class="readable-text" id="p204">Feed it three workspace states: one with high-quality findings, one with contradictory findings, and one with low-confidence results.</li> 
+   <li class="readable-text" id="p205">Verify that the evaluation module returns <code>CONTINUE</code>, <code>REPLAN</code>, and <code>ESCALATE</code> respectively.</li> 
+   <li class="readable-text" id="p206">Add a stagnation check: feed two consecutive identical findings, and verify that it flags stagnation.</li> 
+  </ol> 
+  <div class="readable-text" id="p207"> 
+   <p><em>Expected </em>duration: 15 min</p> 
+  </div> 
+  <div class="readable-text" id="p208"> 
+   <p><strong>Exercise 3: Build the attention router.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p209"> 
+   <p><em>Objectiv</em><em>e</em>: Implement attention-based routing, and observe how it changes the cognitive cycle.</p> 
+  </div> 
+  <div class="readable-text" id="p210"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p211">Create exercise3_attention.py using the attention module from listing 10.6.</li> 
+   <li class="readable-text" id="p212">Simulate a cognitive cycle in which initial perception classifies a query as complex, planning proposes <code>HYPOTHESIS_TEST</code>, the first execution returns low-confidence results, and evaluation flags <code>REPLAN</code>.</li> 
+   <li class="readable-text" id="p213">Trace the attention routing decisions at each step. Verify that attention routes back to planning after the <code>REPLAN</code> signal rather than proceeding to the next execution step.</li> 
+   <li class="readable-text" id="p214">Compare against a fixed cycle (perceive-plan-execute-evaluate-repeat) on the same scenario.</li> 
+  </ol> 
+  <div class="readable-text" id="p215"> 
+   <p><em>Expected duration</em>: 20 min</p> 
+  </div> 
+  <div class="readable-text" id="p216"> 
+   <p><strong>Exercise 4: Full cognitive agent with memory.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p217"> 
+   <p><em>Objectiv</em><em>e</em>: Assemble the complete cognitive agent with the MCP memory server, and observe learning across sessions.</p> 
+  </div> 
+  <div class="readable-text" id="p218"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p219">Create exercise4_full_agent.py, assembling all modules from the chapter.</li> 
+   <li class="readable-text" id="p220">Connect two MCP servers: <code>@modelcontextprotocol/server-memory</code> for the memory module and a filesystem MCP server for the execution module.</li> 
+   <li class="readable-text" id="p221">Run the cognitive loop on a technical troubleshooting question. After completion, inspect the knowledge graph to verify that the memory module recorded the problem entity, strategy observations, and outcome.</li> 
+   <li class="readable-text" id="p222">Run a second, related query. Verify that the memory module’s proactive retrieval surfaces the first session’s experience and that this experience informs the agent’s plan. </li> 
+   <li class="readable-text" id="p223">Print the execution traces for both runs side by side. Note where the second run benefits from memory.</li> 
+  </ol> 
+  <div class="readable-text" id="p224"> 
+   <p><em>Expected duration</em>: 25 min</p> 
+  </div> 
+  <div class="readable-text" id="p225"> 
+   <p><strong>Exercise 5: Measure metacognitive calibration.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p226"> 
+   <p><em>Objectiv</em><em>e</em>: Evaluate your cognitive agent’s confidence calibration.</p> 
+  </div> 
+  <div class="readable-text" id="p227"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p228">Create<code> </code>exercise5_calibration.py, which runs the cognitive agent on ten queries of varying difficulty (provide a test set).</li> 
+   <li class="readable-text" id="p229">Record the agent’s final confidence score and the actual correctness of each response (you provide the ground truth).</li> 
+   <li class="readable-text" id="p230">Compute the correlation between confidence and correctness. </li> 
+   <li class="readable-text" id="p231">Plot a calibration curve (confidence buckets vs actual accuracy).</li> 
+   <li class="readable-text" id="p232">Compare this to a flat ReAct agent’s calibration on the same queries.</li> 
+  </ol> 
+  <div class="readable-text" id="p233"> 
+   <p><em>Expected duration</em>: 20 min</p> 
+  </div> 
+  <div class="readable-text" id="p234"> 
+   <h2 class=" readable-text-h2">Summary</h2> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p235">Individual reasoning patterns (CoT, ReAct, ToT, Reflexion) are cognitive primitives. Composing them into a unified architecture produces qualitatively different behavior that starts to look general rather than narrow.</li> 
+   <li class="readable-text" id="p236">Cognition, in agent terms, means the quality of the agent’s internal model of the task: Can the agent decompose novel problems, reason about dependencies, compose tools in new ways, and update its understanding as new information arrives?</li> 
+   <li class="readable-text" id="p237">Metacognition means the agent’s ability to monitor its own reasoning: Does it know when it is confident versus guessing? Does it detect when it is stuck? Does it recognize the boundaries of its own knowledge?</li> 
+   <li class="readable-text" id="p238">The Cognitive Agent Architecture draws on three theoretical foundations: Minsky’s society of mind (intelligence as interaction between specialized modules), Baars’ global workspace (shared state that modules compete to influence), and Kahneman’s system 1/system 2 (routing queries to appropriate depth of processing).</li> 
+   <li class="readable-text" id="p239">The architecture has six core components—a cognitive workspace (shared state) and five modules: perception (understanding the problem), planning (selecting strategy), execution (acting on the plan), evaluation (metacognitive monitoring), and attention (dynamic routing between modules). A seventh component, the memory module, provides persistent long-term memory via the official ­­<code>@modelcontextprotocol/server-memory</code> knowledge graph.</li> 
+   <li class="readable-text" id="p240">The MCP memory server’s knowledge graph stores problem types as entities, successful strategies as observations, and structural relationships between related problems as relations. The memory module wraps these primitives with proactive retrieval (checking past experience before planning) and experience recording (logging outcomes after evaluation), creating a persistent learning loop. </li> 
+   <li class="readable-text" id="p241">Emergent behaviors arise without being explicitly programmed: curiosity, adaptive persistence, selective depth, and graceful degradation. The knowledge graph amplifies these behaviors over time as the agent accumulates experience.</li> 
+   <li class="readable-text" id="p242">Metacognitive monitoring, specifically confidence-gated execution, stagnation detection, and knowledge boundary awareness, is the most valuable production capability because it prevents confidently wrong answers.</li> 
+   <li class="readable-text" id="p243">The cognitive architecture extends the agentic loop by enriching what happens inside each iteration. The memory knowledge graph persists learning across sessions, turning individual problem-solving into cumulative institutional knowledge.</li> 
+   <li class="readable-text" id="p244">The path to more general agents is architectural, not just parametric. Modular cognitive architectures provide a framework for incremental improvement that pure prompting and model scaling do not. In these architectures, reasoning, monitoring, memory, and adaptation are separate concerns.</li> 
+  </ul>
+ </div></div></body></html>

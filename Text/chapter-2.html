@@ -1,0 +1,1099 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-numbering"><span class="num-string">2</span> </span><span class="chapter-title-text">Core components: Large language models, prompting, and agents</span></h1> 
+  </div> 
+  <div class="introduction-summary"> 
+   <h3 class="introduction-header"><span class="CharOverride-1">This chapter covers</span><span class="CharOverride-1"></span></h3> 
+   <ul> 
+    <li class="readable-text" id="p2"><span class="CharOverride-2">Understanding large language models</span></li> 
+    <li class="readable-text" id="p3"><span class="CharOverride-2">Controlling LLMs with prompt engineering</span></li> 
+    <li class="readable-text" id="p4"><span class="CharOverride-2">Building an agent with OpenAI Agents</span></li> 
+    <li class="readable-text" id="p5"><span class="CharOverride-2">Enhancing agents through tool integration</span></li> 
+   </ul> 
+  </div> 
+  <div class="readable-text" id="p6"> 
+   <p>Now we roll up our sleeves and start building. In the previous chapter, we provided a high-level overview of an agent, the autonomous thinking engine that can act on your behalf. In this chapter, we dive into the foundational components that make agents possible: the large language model that serves as the brain, the prompting techniques that shape its reasoning, and the OpenAI Agents SDK that orchestrates it all. Think of this as assembling your agent’s core architecture, understanding how each piece works individually before we wire them into a cohesive system. By the end, you’ll have hands-on experience with the building blocks that transform a language model from a helpful assistant into a capable agent ready to tackle real work.</p> 
+  </div> 
+  <div class="readable-text" id="p7"> 
+   <h2 class=" readable-text-h2"><span class="num-string">2.1</span> Understanding large language models</h2> 
+  </div> 
+  <div class="readable-text" id="p8"> 
+   <p>Large language models (LLMs) have become ubiquitous in AI. AI agents powered by them increasingly demonstrate the power of this combination, which we will use throughout this book.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p9"> 
+   <p>While LLMs are often perceived as black boxes, and we may not entirely understand how the internal intelligence works, we know enough to unleash their power. In the next section, we will examine how LLMs will power our future agents and agentic systems.</p> 
+  </div> 
+  <div class="readable-text" id="p10"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.1.1</span> LLMs: Probabilistic token machines</h3> 
+  </div> 
+  <div class="readable-text" id="p11"> 
+   <p>At the foundation, LLMs consume text and produce text based on the learned probability of what comes next. Since machine learning models don’t understand text, tokenization converts text into tokens, which are represented as numbers based on their positions in the model’s vocabulary. The model takes this block of tokens and outputs a probability distribution over the full vocabulary, assigning a score to how likely each possible next token is. A separate sampling step then picks one token from that distribution, and that token is the output. The split matters because the model produces the same distribution for a given input. The decoding strategy (greedy, top-k, nucleus sampling) determines which token comes out.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p12"> 
+   <p>Figure 2.1 demonstrates the training and inference/generation process of an LLM.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p13">  
+   <img alt="" src="../Images/CH02_F01_Lanham4.png" style="width: 100%; max-width: max-content;" width="881" height="913"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.1 The training cycle and inference/generation process of a large language model. On the left is the model’s training process, in which documents are ingested to train the LLM in a first pass. On the right, a user enters a prompt, which is first tokenized and fed into the model. The model then outputs probabilities it uses to sample and produce the next token.</span></h5>
+  </div> 
+  <div class="readable-text" id="p14"> 
+   <p>As the figure shows, training an LLM involves feeding blocks of text from various sources, with the model learning to predict the next best or expected token (token index). It does this by taking the model’s prediction for the next token and calculating the loss or amount of error. Error is a measure of how much the output token varies from the expected output token. This error is fed back into the model to correct itself and predict the expected token. The mechanism behind that feedback is called backpropagation: the process of adjusting the model’s internal weights based on the calculated loss. In practice, the training process runs through billions of these iterations across massive amounts of text.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p15"> 
+   <p>Once base training is complete, models undergo a separate alignment phase using methods such as reinforcement learning with human feedback (RLHF). RLHF does not teach the model new knowledge or improve its reasoning. It teaches the model to follow instructions, behave helpfully, and avoid harmful output. Reasoning improvements come from different techniques like chain-of-thought fine-tuning and process reward models.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p16"> 
+   <p>This extensive training produces a language model that can consume tokenized text and generate probabilities for the next token. Once the model uses those probabilities to sample and output the next token, it continues generating probabilities until it encounters an EOS (end-of-stream) token, which halts the process.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p17"> 
+   <p>Inference is fast, and tokens stream out quickly, which gives the illusion of intelligence. The model is just predicting the next best token, one at a time. What makes those predictions good is not some internal probability map. Transformers do not store knowledge as a lookup table. The capability lives in the learned weights of the attention <span class="CharOverride-3">and feedforward (MLP) layers, billions of parameters shaped by training. Each forward</span> pass runs the input through those layers, builds internal representations of the context, and outputs a probability distribution over the next token. The model recomputes that prediction from scratch every time, using weights that encode what it learned.</p> 
+  </div> 
+  <div class="readable-text print-book-callout" id="p18"> 
+   <p><span class="print-book-callout-head">Note</span> Modern LLMs go through an alignment phase after base training using techniques like Reinforcement Learning with Human Feedback (RLHF). RLHF does not improve reasoning. It teaches the model to follow instructions and respond conversationally. Reasoning improvements come from separate techniques like chain-of-thought fine-tuning. To go deeper on fine-tuning and RLHF, see <em>Build a Large Language Model (From Scratch)</em> by Sebastian Raschka (Manning, 2024).</p> 
+  </div> 
+  <div class="readable-text" id="p19"> 
+   <p>The key takeaway here is to understand that an LLM works in terms of probabilities of predicting tokens, so we must consider tokens and token prediction when constructing prompts and instructing agents. But first, we need to understand what a token is.</p> 
+  </div> 
+  <div class="readable-text" id="p20"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.1.2</span> What is a token?</h3> 
+  </div> 
+  <div class="readable-text" id="p21"> 
+   <p>We use the term tokenization to discuss the process of breaking up text into bite-sized pieces that an LLM can consume. These tokens—words and word parts—are then converted to numerical indices in the LLM’s vocabulary. The index numbers are then fed into the LLM, which outputs predictions of token indices, sampled and output as the next predicted token.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p22"> 
+   <p>Figure 2.2 demonstrates the tokenization process for a block of JSON text compared with regular text.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p23">  
+   <img alt="" src="../Images/CH02_F02_Lanham4.png" style="width: 100%; max-width: max-content;" width="941" height="524"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.2 A comparison of tokenization in regular text and JSON</span></h5>
+  </div> 
+  <div class="readable-text" id="p24"> 
+   <p>The figure shows that the JSON is tokenized into 13 tokens, while the equivalent text is tokenized into six tokens. This indicates that text length is not a good indicator of the number of tokens.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p25"> 
+   <p>All those extra braces, quotes, and field names get tokenized too, which inflates the token count for the same underlying data. That doesn’t mean we should never use JSON in a prompt or for exchanging data with an LLM. It just shows the expense of JSON in both token count and overhead. Most LLMs handle JSON well now, but that wasn’t always the case.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p26"> 
+   <p>The key takeaway is that raw text length does not indicate token length. LLM providers price input and output tokens separately, and output tokens are typically two to five times more expensive than input depending on the provider and model. This cost adds up fast in large agentic systems where a single run can move millions of tokens through an LLM.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p27"> 
+   <p>Python packages like tiktoken can help you measure the number of tokens in text. You pass the input text to tiktoken, which outputs the number of tokens based on the model’s vocabulary encoding format. The OpenAI Agents SDK we use later also provides an automatic count of input and output tokens for each LLM interaction.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p28"> 
+   <p>A larger number of input tokens will also typically increase the uncertainty of the LLM output. But we can control this with prompting and, as we’ll see in the next section, other ways to tune the LLM’s output.</p> 
+  </div> 
+  <div class="readable-text" id="p29"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.1.3</span> Tuning temperature, top-p, and more</h3> 
+  </div> 
+  <div class="readable-text" id="p30"> 
+   <p>Tokens are not the only thing that shapes a model’s output. We can pass several parameters to the model that change how it behaves, and most of them carry trade-offs. Raising the temperature, for example, makes the model more creative but less factually accurate. These parameters are distinct from API settings such as authentication and retries, which control the call itself rather than its generation. Figure 2.3 summarizes the parameters and their effects.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p31">  
+   <img alt="" src="../Images/CH02_F03_Lanham4.png" style="width: 100%; max-width: max-content;" width="931" height="591"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.3 The various parameters that can be used to modify an LLM’s output. The right side of the figure provides an expanded view of the model predicting and sampling tokens to generate output. On the left, we see the various parameters that can be used to alter the sampling of the next token within the model.</span></h5>
+  </div> 
+  <div class="readable-text" id="p32"> 
+   <p>The right side of the figure shows a close-up of the LLM prediction and sampling blocks from figure 2.2. Sampling is the step where the model picks one token from the probability distribution it just produced. The sampling parameters (temperature, top-<em>p</em>, presence penalty, frequency penalty) all affect that pick. The max tokens parameter is different. It caps the number of tokens the model can output in a single response.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p33"> 
+   <p>Table 2.1 also provides a more detailed summary of these parameters.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p34"> 
+   <h5 class=" browsable-container-h5">Table 2.1 LLM parameters and how they can be used to control output</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-1"/> 
+     <col class="_idGenTableRowColumn-2"/> 
+     <col class="_idGenTableRowColumn-3"/> 
+     <col class="_idGenTableRowColumn-4"/> 
+    </colgroup> 
+    <thead> 
+     <tr class="No-Table-Style _idGenTableRowColumn-5"> 
+      <th class="No-Table-Style CellOverride-1" scope="col"> <p class="_TableHead">Parameter</p> </th> 
+      <th class="No-Table-Style CellOverride-2" scope="col"> <p class="_TableHead">Typical range</p> </th> 
+      <th class="No-Table-Style CellOverride-2" scope="col"> <p class="_TableHead">What it really does </p> </th> 
+      <th class="No-Table-Style CellOverride-3" scope="col"> <p class="_TableHead">When to raise / lower</p> </th> 
+     </tr> 
+    </thead> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-4"> <p class="_TableBody">Temperature</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">0–2 <br/>(default ≈ 1)</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Scales every token’s probability before sampling. Higher = flatter distribution <span class="CharOverride-5">⇒</span> more randomness/creativity. Lower = sharper <span class="CharOverride-5">⇒</span> more deterministic, repetitive output. </p> </td> 
+      <td class="No-Table-Style CellOverride-6"> <p class="_TableBody">Raise for brainstorming, fiction. Lower for consistent answers, code. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">top-<em>p</em> (nucleus)</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">0–1 <br/>(default ≈ 1)</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Keeps only the smallest set of tokens whose cumulative probability ≥ <em>p</em>; renormalizes, then samples. Controls variety without letting low-probability “tail” tokens in. </p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Lower(&lt; 0.9) for tight, on-topic prose. Higher (~1) for free-form generation. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">max_tokens</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody ParaOverride-12">1–8192 + (model-dependent)</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">A hard ceiling on how many tokens the model may generate in the response. (Prompt tokens + max ≤ context window.) </p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Set just above the expected length. It prevents rambling and keeps cost down. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-8"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">presence_penalty</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">–2 … +2</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Adds a penalty once a token has appeared; encourages new topics</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Use 0.6–1.0 to avoid repeating already-­mentioned concepts.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-8"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody ParaOverride-12">frequency_penalty</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">–2 … +2</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Penalizes tokens in proportion to their current count; discourages phrase repetition </p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Use 0.2–0.8 to reduce echoing or loops in long answers.</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text intended-text" id="p35"> 
+   <p>We often adjust these parameters based on the agent’s role. A coder agent, where the output needs to be strict and consistent, might set the temperature to 0 and use a low-frequency penalty so that common syntax (brackets, keywords, variable names) can repeat freely. A creative writer agent might set the temperature to 2 and apply a high presence penalty, pushing the model to introduce new ideas rather than loop on the same ones.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p36"> 
+   <p>It is also essential to understand that these parameters influence the model rather than impose strict limits. Setting the temperature to 0 does not guarantee the LLM will always output the same answer. Some parameters also interact in ways that make tuning both at once unpredictable, which is why providers like OpenAI recommend adjusting either temperature or top-<em>p</em>, not both.</p> 
+  </div> 
+  <div class="readable-text" id="p37"> 
+   <p>In most cases, the only parameters you will modify are temperature (based on the agent’s role) and max tokens. Setting max tokens limits response length, avoids expensive interactions, and acts as a guardrail against unexpectedly long outputs. The seed parameter is also worth knowing about. When you pass the same seed, prompt, and parameters, the model returns the same output, which is useful for debugging and evaluation runs. The other parameters can usually be left at their defaults, and we rely on prompt engineering to control the model, as seen in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p38"> 
+   <h2 class=" readable-text-h2"><span class="num-string">2.2</span> Controlling LLMs with prompt engineering (agent persona)</h2> 
+  </div> 
+  <div class="readable-text" id="p39"> 
+   <p>Some treat prompt engineering as hype attached to LLMs. The reality is the opposite. Prompt engineering is how you make agents predictable and productive, keep costs down, and avoid unexpected behavior. The surface area of the discipline has shifted as models have improved Modern LLMs can handle much more than older models, which required careful prompting. But the core skill remains the same: writing clear, well-structured prompts that an agent can act on reliably. As covered in chapter 1, the persona or prompt is the core functional layer of an agent, and prompt engineering is the practical work of getting that layer right.</p> 
+  </div> 
+  <div class="readable-text" id="p40"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.2.1</span> Applying core prompt techniques</h3> 
+  </div> 
+  <div class="readable-text" id="p41"> 
+   <p>How you prompt an LLM—the language, key terms, and tone—may vary from LLM to LLM, but several key techniques have remained universal. These techniques work well across LLMs because they take advantage of foundational training patterns that all models share to some extent. By following these patterns, we can also build universal prompts and agents that can move from LLM to LLM without modification.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p42"> 
+   <p>Table 2.2 summarizes the techniques, with an example and a description of how they may apply to an agent’s persona or base set of instructions that drive the agent. It presents general techniques for prompt engineering. We may find that some methods, such as “Define the exact output format,” don’t apply to us in this book because we use the OpenAI Agents SDK, which handles that automatically.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p43"> 
+   <h5 class=" browsable-container-h5">Table 2.2 Essential prompt techniques</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-9"/> 
+     <col class="_idGenTableRowColumn-10"/> 
+     <col class="_idGenTableRowColumn-11"/> 
+     <col class="_idGenTableRowColumn-12"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-13"> <p class="_TableHead">Technique</p> </td> 
+      <td class="No-Table-Style CellOverride-14"> <p class="_TableHead">Description</p> </td> 
+      <td class="No-Table-Style CellOverride-14"> <p class="_TableHead">Example prompt snippet</p> </td> 
+      <td class="No-Table-Style CellOverride-15"> <p class="_TableHead">How it works with agents</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Assign a clear role or persona</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> <p class="_TableBody">State a role that sets vocabulary, tone, and depth.</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> <p class="_TableBody">“You are a senior DevOps engineer. Diagnose the Docker error below …”</p> </td> 
+      <td class="No-Table-Style CellOverride-18"> <p class="_TableBody">Switch persona strings to create researcher, critic, or planner agents without code changes.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-15"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Front-load Instructions and use delimiters</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Put the directive first; fence user data with unique markers.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Task: Summarize in ≤100 words. Article: `</p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Always apply this practice with agents.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Be specific and detailed.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Supply concrete length, audience, and objective.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">“Write a 200-word LinkedIn post in a friendly tone with two actionable tips …” </p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Prevents agents from producing outputs that violate word limits or brand tone. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-16"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Define the exact output format.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Provide a skeleton JSON / CSV / Markdown structure.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody"> <code>{ </code><code>"</code><code>title</code><code>"</code><code>: </code><code>""</code><code>, </code><code>"</code><code>key_points</code><code>"</code><code>: [</code><code>""</code><code>, </code><code>""</code><code>, </code><code>""</code><code>], </code><code>"</code><code>cta</code><code>"</code><code>: </code><code>""</code><code> }</code> </p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">OpenAI Agents SDK supports typed outputs, so this won’t be required in our examples.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Use few-shot examples.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Embed labelled examples as mini unit-tests.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Input: “Free Bitcoin!!!” <span class="CharOverride-5">⇒</span> Label: Spam Input: “Team lunch?” <span class="CharOverride-5">⇒</span> Label: Not Spam</p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Agents can store examples in a vector DB and retrieve similar ones at runtime for adaptive prompting.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Chain-of-thought for complex reasoning</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Ask the model to think step by step, then answer.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">“Let’s work this out step by step … Return only the final value.”</p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Produces an auditable reasoning trace that a critic or verifier agent can inspect before execution.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Emphasize positive instructions.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Say what to do, not just what to avoid.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">“Explain using high-school language.” (versus “Don’t use jargon.”)</p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Positive phrasing lowers rule-­violation rates, boosting autonomous reliability.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Eliminate ambiguity</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Replace fuzzy words with numeric bounds.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">“Provide 3–4 key points under 50 words total.”</p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Agent guardrails can auto-check length and count and trigger retries if out of spec.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-19"> <p class="_TableBody">Pick the right model and settings.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">Match model tier and generation knobs to the task.</p> </td> 
+      <td class="No-Table-Style CellOverride-20"> <p class="_TableBody">model=gpt-4o, temperature=0.7, max_tokens=300</p> </td> 
+      <td class="No-Table-Style CellOverride-21"> <p class="_TableBody">Balances cost, latency, and reasoning depth so agents meet specifications.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody">Iterate and refine.</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Treat each response as feedback; tighten and repeat.</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">After each run, log prompt + output; adjust length spec or add an example; rerun until &gt;95 % on spec.</p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Logs feed a format-fixer sub-agent or fine-tune, creating a self-­improving agent pipeline.</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p44"> 
+   <p>Listing 2.1 shows what a more complete research agent prompt or set of instructions might look like. As is common practice, the prompt uses Markdown for formatting and unique delimiters to highlight specific sections. Delimiters add tokens, but the improved structure and clarity more than compensate through more consistent and coherent outputs.</p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p45"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Prompt caching</h5> 
+   </div> 
+   <div class="readable-text" id="p46"> 
+    <p>In high-traffic production systems, prompt structure also affects cost and latency through prompt caching. Most providers cache the static portion of a prompt (system instructions, persona, tool definitions) and charge a fraction of the input rate on cache hits. Putting stable content at the top of the prompt and dynamic content at the bottom maximizes cache reuse, which can cut input costs by 90% on hot paths.</p> 
+   </div> 
+  </div> 
+  <div class="browsable-container listing-container" id="p47"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.1 Sample research agent prompt</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">You are an **expert Research AI Librarian** who excels at web-search synthesis.#1
+
+**Task:** Find the five most relevant, recent articles.    #2
+**Query:** &lt;&lt;&lt;Q     #2
+"&lt;user query here&gt;"     #2
+Q&gt;&gt;&gt;     #2
+
+Audience: technology analysts · Recency: **last 30 days** 
+· Max summary length: **≤ 150 words**.    #3
+ #3
+Input: "quantum-dot solar cells breakthroughs"    #4
+Desired Output (one article sample):     #4
+• **Next-Gen Quantum-Dot Cells Hit 20 % Efficiency** — 
+https://example.com/qdot20 — 2025-03-10       #4
+  • Novel ligand swap boosts charge transport; Scalable 
+  roll-to-roll fabrication; Experts predict sub-$0.20/W cost by 2028     #4
+ #4
+**Think step-by-step silently** (do NOT reveal reasoning) before answering.    #5
+
+
+**Use clear, non-jargon language**.    #6
+
+- Exactly **5** articles.    #7
+- Each summary **≤ 150 words**.     #7
+- Only HTTPS, non-paywalled sources.     #7</pre> 
+    <div class="code-annotations-overlay-container"> #1 Defines the role 
+     <br/>#2 Front loading tasks plus using delimiters 
+     <br/>#3 Specific and detailed 
+     <br/>#4 Few-shot examples 
+     <br/>#5 Chain-of-thought 
+     <br/>#6 Positive instructions 
+     <br/>#7 Eliminates ambiguity
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p48"> 
+   <p>In addition to the techniques showcased in table 2.2 and listing 2.1, the focus is on structure. LLMs are trained on various data formats and types, but structured data is easy to evaluate and critique, which improves loss feedback. This all comes down to writing a prompt as if you were an LLM consuming it or, as we’ll see in the next section, thinking about it.</p> 
+  </div> 
+  <div class="readable-text" id="p49"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.2.2</span> Thinking like an LLM</h3> 
+  </div> 
+  <div class="readable-text" id="p50"> 
+   <p>An analogy often used to describe writing effective prompts is to think about writing a prompt as if you were giving instructions to a new <em>xyz</em>. Here <em>xyz</em> could be a new employee, researcher, writer, or anyone lacking background experience in undertaking a task. That doesn’t mean you have to write a manual. Still, you want to avoid assumptions and be specific when describing the task. For example, write a story about time travel that takes the traveler back to 1921, is no more than five paragraphs long, and uses a humorous, engaging tone in the first person.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p51"> 
+   <p>This also means you can describe the task as you want the agent to perform it. For example, when performing task <em>X</em>, always remember to consider <em>Y</em> and <em>Z</em>. Generally, this is how the LLM will execute it. Take this a step further, and you can describe entire workflows in a prompt, complete with decisions, and an agent will be able to execute them.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p52"> 
+   <p>In figure 2.4, we show an example workflow we want to convert into a prompt so an LLM or agent can execute it as a person would.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p53">  
+   <img alt="" src="../Images/CH02_F04_Lanham4.png" style="width: 100%; max-width: max-content;" width="831" height="777"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.4 A complex workflow showing what a search researcher may perform. The workflow illustrates the tasks an agent may undertake, complete with decision points (circles) and the flow from one task to another. (The figure is overly complex just to demonstrate the workflow.) In the figure, the workflow shows how we want an LLM or agent to perform a series of tasks and consider the output to make decisions based on the results. The workflow details are not critical, and the complexity is used to demonstrate how complex instruction prompts can be constructed by following good prompt engineering practices. (Don’t be alarmed if you can’t follow this figure; it is just a toy example of complexity taken to the extreme.)</span></h5>
+  </div> 
+  <div class="readable-text" id="p54"> 
+   <p>Tasks will often be tool calls that the LLM uses to perform functions or gather new information. While you may usually describe task loops in a prompt, in practice, an LLM will often exit loops quickly, after three or fewer tries. Compare this with an agent, which will continue looping until it is satisfied that the goal is complete or unattainable.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p55"> 
+   <p>Listing 2.2 shows what the same workflow would look like as prompt instructions for an agent. The prompt demonstrates decision-making, provides examples, and presents a consolidated output task, all in a concise structure. To check this prompt, assume the role of the search agent and read through the instructions as if you were working on the tasks.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p56"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.2 Search workflow</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">You are an **Internal Knowledge Search Agent** who decides #1
+the best data source and delivers concise, actionable findings.    #1
+
+**Task:** Choose the correct location (A = internal KB, B = public web) #2
+based on the query, run the search, and summarise the outcome.    #2
+**Query:** &lt;&lt;&lt;Q 
+"&lt;user question here&gt;"
+Q&gt;&gt;&gt;
+
+Audience: support engineers · Tone: clear and neutral · Time-box each search  #3
+to **3 minutes** · Max summary length: **≤ 120 words**.    #3
+
+Example 1    #4
+Input: "Where is the 2023 API rate-limit doc?"   #4
+Chosen Location: **A**   #4
+Outcome: Found → Provided link and excerpt (110 words).   #4
+ #4
+Example 2       #4
+Input: "Latest competitor pricing for mid-tier plan"   #4
+Chosen Location: **B**   #4
+Outcome: Found → Shared three URLs with bullet summary (118 words).   #4
+
+**Think silently step-by-step first** (do NOT reveal reasoning) to pick the #5
+location and craft the summary.    #5
+
+**Use plain language**; emphasise next steps for the engineer.    #6
+
+- Exactly **one** chosen location (A or B).    #7
+- **If results found:** include up to **3** bullet points.  
+- **If no results in first source:** switch to the other location once; if still none, respond "Escalate".</pre> 
+    <div class="code-annotations-overlay-container"> #1 Persona or role
+     <br/>#2 Provides a decision and multiple paths
+     <br/>#3 Uses precise metrics to qualify tasks
+     <br/>#4 Provides examples of decisions and outcomes
+     <br/>#5 Lets the LLM think through the problem first
+     <br/>#6 Provides positive instructions
+     <br/>#7 Combines results and reduces complexity in the workflow
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p57"> 
+   <p>Of course, creating prompts like this can be uncomfortable at first, so asking an LLM to help craft one can also be useful. Indeed, writing a prompt to help you write a prompt is an excellent exercise in prompt writing. But prompt writing can also go wrong, and there are several things you should avoid, as we will see in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p58"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.2.3</span> Avoiding common prompt pitfalls</h3> 
+  </div> 
+  <div class="readable-text" id="p59"> 
+   <p>Table 2.3 highlights several common pitfalls you may encounter when over-­engineering your prompts while writing prompt instructions for agents.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p60"> 
+   <h5 class=" browsable-container-h5">Table 2.3 Common pitfalls encountered when over-engineering prompts </h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-17"/> 
+     <col class="_idGenTableRowColumn-18"/> 
+     <col class="_idGenTableRowColumn-19"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-5"> 
+      <td class="No-Table-Style CellOverride-22"> <p class="_TableHead">Problem</p> </td> 
+      <td class="No-Table-Style CellOverride-23"> <p class="_TableHead">Description</p> </td> 
+      <td class="No-Table-Style CellOverride-24"> <p class="_TableHead">Solution</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-25"> <p class="_TableBody">Too complicated</p> </td> 
+      <td class="No-Table-Style CellOverride-26"> <p class="_TableBody">A long, multitopic prompt can overwhelm the LLM’s context window, raise token costs, and create conflicting instructions.</p> </td> 
+      <td class="No-Table-Style CellOverride-27"> <p class="_TableBody">Break the prompt into smaller, role-specific prompts (or agent steps). Each step handles one clear objective before handing off to the next role.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-28"> <p class="_TableBody">Contradictory</p> </td> 
+      <td class="No-Table-Style CellOverride-29"> <p class="_TableBody">The prompt contains instructions that clash (e.g., “be concise” and “explain in depth”). The model must guess which rule to follow.</p> </td> 
+      <td class="No-Table-Style CellOverride-30"> <p class="_TableBody">Read the prompt end-to-end as if you were the model; remove or rephrase conflicts. Use bullet lists to make priorities explicit.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-28"> <p class="_TableBody">Too simple</p> </td> 
+      <td class="No-Table-Style CellOverride-29"> <p class="_TableBody">A single micro-prompt triggers many round-trips and network calls, adding latency and cost.</p> </td> 
+      <td class="No-Table-Style CellOverride-30"> <p class="_TableBody">Consolidate related micro-tasks into one richer prompt, or grant the agent limited decision-­making (e.g., tool use, function calls) so it can handle branches internally. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-28"> <p class="_TableBody">Inconsistent delimiters</p> </td> 
+      <td class="No-Table-Style CellOverride-29"> <p class="_TableBody">Mixing “”” … “””, &lt;&lt;&lt; … &gt;&gt;&gt;, and markdown fences in one prompt confuses both the model and downstream parsers. </p> </td> 
+      <td class="No-Table-Style CellOverride-30"> <p class="_TableBody">Adopt one delimiter style per prompt (e.g., &lt;&lt;&lt;BLOCK … BLOCK&gt;&gt;&gt;), and document it in your prompting guidelines. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-28"> <p class="_TableBody">Overly explicit</p> </td> 
+      <td class="No-Table-Style CellOverride-29"> <p class="_TableBody">Stuffing dozens of rules or constraints into a single prompt increases length and the risk that some rules are ignored.</p> </td> 
+      <td class="No-Table-Style CellOverride-30"> <p class="_TableBody">Keep only the critical constraints. If you must enforce many rules, split them across chained prompts, or add a guardrail step that validates and corrects the output.</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <td class="No-Table-Style CellOverride-31"> <p class="_TableBody">Variable output</p> </td> 
+      <td class="No-Table-Style CellOverride-32"> <p class="_TableBody">You have set a temperature of 0, but your prompt responses are still all over when given the same input.</p> </td> 
+      <td class="No-Table-Style CellOverride-33"> <p class="_TableBody">Setting the temperature to zero only reduces variability. If you need a prompt to be always consistent, make sure you are explicit in your instructions, use delimiters, and do not use contrary instructions.</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p61"> 
+   <p>Of course, on your journey to building powerful agents, you will encounter other pitfalls you must resolve. Using an LLM to help you write and rewrite prompts can be very useful, but be careful that prompts don’t become overly complicated or explicit. Above all, don’t be afraid to break up your masterpiece prompt into smaller tasks if it becomes large or unduly complicated.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p62"> 
+   <p>Now that we have a clear understanding of LLMs and how to prompt them, we’ll apply these principles to building agents in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p63"> 
+   <h2 class=" readable-text-h2"><span class="num-string">2.3</span> Building an agent with OpenAI Agents</h2> 
+  </div> 
+  <div class="readable-text" id="p64"> 
+   <p>Numerous frameworks for building agents exist, each with a unique approach to implementing an agent. Fortunately, protocols like MCP and A2A provide a common foundation for how agents interact with tools and with one another. We will focus on using the OpenAI Agents SDK in this book.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p65"> 
+   <p>The OpenAI Agents SDK arrived after several earlier agent frameworks, and it benefits from those lessons. The result is an SDK that is light, extensible, and flexible. We will use this pattern to build all agents in the book, starting with our first one in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p66"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.3.1</span> Building a minimal agent</h3> 
+  </div> 
+  <div class="readable-text" id="p67"> 
+   <p>Now that we have covered how LLMs produce tokens and how prompts shape that output, we can put both into practice. Listing 2.3 shows a starting example for a research planning agent and the first step in our Deep Research agent workflow. This agent researches the topic and outputs a concise five-step plan. The code, run instructions, and Python environment setup are in the book’s GitHub repository: <a href="https://github.com/cxbxmxcx/AI-Agent-Workflows"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/github.com/cxbxmxcx/AI-Agent-Workflows</span></a><span class="Hyperlink">.</span><span class="_Hyperlink"></span></p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p68"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.3 01_first_agent.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import Agent, Runner    #1
+from dotenv import load_dotenv
+
+load_dotenv()    #2
+
+instructions = """    #3
+You are a research planning assistant.
+
+**TASK INSTRUCTIONS**
+- You will be given a research topic.
+- Your task is to provide a plan on how to research this topic.
+- Output 5 concise tasks (5 words or less) to your plan.
+"""
+
+agent = Agent(    #4
+    name="Research Planner", 
+    instructions=instructions,
+    )
+
+input = "learn about AI agents"    #5
+
+result = Runner.run_sync(    #6
+    agent, 
+    input=input,
+    )
+
+print(result.final_output)    #7</pre> 
+    <div class="code-annotations-overlay-container"> #1 Imports required packages
+     <br/>#2 Loads environment variables from .env file
+     <br/>#3 Prompt instructions for the agent
+     <br/>#4 Configures the agent
+     <br/>#5 Topic the user wants to research
+     <br/>#6 Runner runs the agents, in this case synchronously.
+     <br/>#7 Outputs the result/response from the agent
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p69"> 
+   <p>Run the code, and you will see something like the output shown in listing 2.4. Notice how the agent’s response adheres nicely to the prompt instructions. We could likely include more details in our prompt, but this is a good starting point.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p70"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.4 Example output for 01_first_agent.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">1. Review academic literature.
+2. Explore online courses.
+3. Analyze real-world applications.
+4. Study agent architectures.
+5. Join AI forums or communities.</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p71"> 
+   <p>As previously stated, you may want to configure the model and model parameters for different agent roles. In the next section, we look at how to set the model and model parameters when creating an agent.</p> 
+  </div> 
+  <div class="readable-text" id="p72"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.3.2</span> Setting the agent model and other parameters</h3> 
+  </div> 
+  <div class="readable-text" id="p73"> 
+   <p>Listing 2.5 shows an example of setting an agent’s model and model parameters. We want the planning to be consistent for this agent, so we set the temperature to 0. At temperature 0, the model picks the highest-probability token at each step instead of sampling, which produces the same plan structure across runs and makes the agent’s behavior easier to debug and evaluate. We left the other parameters at the defaults and specified the exact model we wanted to use; otherwise, the SDK would default to whichever model the provider currently points at.</p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p74"> 
+    <h5 class=" callout-container-h5 readable-text-h5">A note on reasoning models</h5> 
+   </div> 
+   <div class="readable-text" id="p75"> 
+    <p>The latest models from OpenAI, Anthropic, and others expose a <code>reasoning-effort</code> parameter (sometimes called <code>thinking</code> or <code>reasoning_effort</code>) that controls how much internal deliberation the model performs before answering. The default is often medium or high. For agents, this is usually the wrong setting. An agent typically runs many small, well-scoped steps where the prompt and tools already constrain the work. High reasoning effort adds latency and token cost without changing the answer. Set reasoning to none or minimal for routine agent steps, and reserve higher effort for the specific steps that need it (planning, complex tool selection, debugging a stuck loop). This keeps the agent fast and cheap by default, with deliberation reserved for the moments that earn it.</p> 
+   </div> 
+  </div> 
+  <div class="browsable-container listing-container" id="p76"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.5 02_setting_agent_model_parameters.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">agent = Agent(
+    name="Research Planner", 
+    instructions=instructions,
+    model="gpt-4.1",    #1
+    model_settings=ModelSettings(
+        temperature=0.0,    #2
+        max_tokens=150,    #3
+        top_p=1.0,   #4
+        frequency_penalty=0.5,  
+        presence_penalty=0.5,  
+    )
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Explicitly sets the model to use
+     <br/>#2 Sets the temperature to 0.0 to make sure responses are more repeatable
+     <br/>#3 Limits the number of output tokens
+     <br/>#4 Keeps the defaults for the remaining parameters
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p77"> 
+   <p>When we run this agent multiple times with the same input, we should see more consistent outputs, as shown in listing 2.6. Notice how the output appears almost identical until the fifth task, which differs slightly. Remember, setting temperature to 0 reduces output variation, but that doesn’t mean we should never expect variation.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p78"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.6 Output of 02_setting_agent_model_parameters.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">RUN #1
+1. Review foundational AI agent literature  
+2. Explore recent AI agent advancements
+3. Analyze agent architectures and frameworks
+4. Study real-world agent applications
+5. Compare agent types and capabilities
+
+RUN #2
+1. Review foundational AI agent literature  
+2. Explore recent AI agent advancements
+3. Analyze agent architectures and frameworks
+4. Study real-world agent applications
+5. Compare leading agent development tools</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p79"> 
+   <p>Generally, the longer the output, the more potential for variation. If you want variation, that may be fine, but it tends to slip into other areas, especially output formatting. For this reason, we prefer repeatable, structured outputs. We’ll see how to do this in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p80"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.3.3</span> Controlling inputs and typed outputs</h3> 
+  </div> 
+  <div class="readable-text" id="p81"> 
+   <p>Figure 2.5 shows a simple workflow for agents and compares a workflow without input/output types with an agent workflow that uses input/output types. When an agent uses typed outputs, those outputs can feed into another agent without the risk of response variability breaking the workflow. Remember, LLMs are probabilistic token predictors, and there is always a chance that outputs will vary. By strongly typing outputs and inputs, we avoid breaking or confusing an agent workflow.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p82">  
+   <img alt="" src="../Images/CH02_F05_Lanham4.png" style="width: 100%; max-width: max-content;" width="900" height="792"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.5 Comparing how an agent workflow may run with and without typed outputs/inputs. At the top, the agent does not use strict outputs and could respond in any fashion, increasing variability when passing output to the next agent. Conversely, at the bottom, the agent provides strict outputs, which reduces variability and improves clarity for agents or processes receiving the output.</span></h5>
+  </div> 
+  <div class="readable-text" id="p83"> 
+   <p>Listing 2.7 shows the changes we must apply to the planning agent to support typed output from our earlier example. Here, we use the Pydantic typing library to define the base data model. We now expect the agent to output a list of tasks.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p84"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.7 03_output_types_basic.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from pydantic import BaseModel    #1
+
+class ResearchPlanModel(BaseModel):    #2
+    tasks: List[str]
+    """A list of tasks to perform for research."""
+
+
+agent = Agent(
+    name="Research Planner", 
+    instructions=instructions,
+    output_type=ResearchPlanModel,    #3
+    )
+
+EXAMPLE OUTPUT
+tasks=['Conduct literature review', 
+'Identify key AI frameworks', 'Study agent-based models', 
+'Analyze real-world applications', 'Explore future trends']</pre> 
+    <div class="code-annotations-overlay-container"> #1 Imports BaseModel class from Pydantic to support typing
+     <br/>#2 Builds a model to hold the agent output
+     <br/>#3 Assigns the output to the agent
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p85"> 
+   <p>We want to provide more information for each task, so instead of a list, we will use a dictionary, as shown in the following listing.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p86"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.8 04_output_types.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from pydantic import BaseModel    
+
+class ResearchPlanModel(BaseModel):    
+    tasks: dict[int, str]    #1
+    """A list of tasks to perform for research."""
+
+
+agent = Agent(
+    name="Research Planner", 
+    instructions=instructions,
+    output_type=ResearchPlanModel,    
+    )</pre> 
+    <div class="code-annotations-overlay-container">
+     #1 Now we define the list of tasks as a dictionary.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p87"> 
+   <p>Run this code, and you will see the following error:</p> 
+  </div> 
+  <div class="readable-text" id="p88"> 
+   <blockquote>
+    <div>
+     <em>Exception has occurred: UserError</em>
+    </div>
+   </blockquote> 
+  </div> 
+  <div class="readable-text" id="p89"> 
+   <blockquote>
+    <div>
+     <em>Strict JSON schema is enabled, but the output type is not valid. Either make the output type strict, or pass output_schema_strict=False to your Agent()</em>
+    </div>
+   </blockquote> 
+  </div> 
+  <div class="readable-text" id="p90"> 
+   <p>The error occurs because our type is not strictly defined, which means the underlying JSON structure that gets passed around can be modified. Understanding what these errors mean and how to resolve them is crucial. You can resolve these errors in two ways:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p91">Wrap the type in an output schema that allows you to disable the strict JSON check, like so (not recommended):</li> 
+  </ul> 
+  <div class="browsable-container listing-container" id="p92"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">AgentOutputSchema(ResearchPlanModel, strict_json_schema=False)</pre>  
+   </div> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p93">Find and resolve the problem. ChatGPT or Claude can be excellent for helping you find and resolve the problem (preferred).</li> 
+  </ul> 
+  <div class="readable-text" id="p94"> 
+   <p>Listing 2.9 shows the solution for finding and replacing the offending type with code that allows the JSON type to remain strict. The problem was that the <code>dict[int,</code> <code>str]</code> object allowed extra properties, breaking the criteria for strict JSON mode. The problem was resolved by entering the code into ChatGPT and letting it search for and recommend a solution. Avoid disabling strict JSON (<code>strict_json_schema=False</code>) because this can open the door to difficult-to-find bugs and other problems. </p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p95"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.9 05_output_types_fixed.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from pydantic import BaseModel, ConfigDict
+from typing_extensions import TypedDict
+
+class Task(TypedDict):    #1
+    id: int
+    description: str
+
+class ResearchPlanModel(BaseModel):
+    tasks: list[Task]    #2
+    """Numbered tasks for research."""
+
+    model_config = ConfigDict(extra='forbid')    #3
+
+OUTPUT
+tasks=[{'id': 1, 'description': 'Review academic literature'}, {'id': 2, 'description': 'Analyze recent case studies'}, {'id': 3, 'description': 'Interview industry experts'}, {'id': 4, 'description': 'Attend AI conferences'}, {'id': 5, 'description': 'Explore online courses'}]</pre> 
+    <div class="code-annotations-overlay-container"> #1 The solution was to replace dict[int, str] with a TypedDict object.
+     <br/>#2 Tasks now in a list of Task objects
+     <br/>#3 We also set the model object to forbid extra properties from being added, remaining strict.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p96"> 
+   <p>Another key benefit of typing outputs is that you don’t need to define the output format in the prompt. While you’ll often describe the general outputs you want in the prompt, you won’t have to explain the format strictly. This simplifies your prompts, making them more general and less likely to break.</p> 
+  </div> 
+  <div class="readable-text" id="p97"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.3.4</span> Tracing agents</h3> 
+  </div> 
+  <div class="readable-text" id="p98"> 
+   <p>Tracing is enabled by default when using the OpenAI Agents SDK with the OpenAI API. You can check what your agents have been doing by visiting the OpenAI API website. Figure 2.6 shows a screenshot of the traces interface for the Research Planning agent we saw earlier.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p99">  
+   <img alt="" src="../Images/CH02_F06_Lanham4.png" style="width: 100%; max-width: max-content;" width="894" height="522"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.6 An example of the OpenAI Traces screen for reviewing your agent execution. At the top, you can see the workflow/trace from the agent, and below that, the specific details about calls to the underlying LLM, including the inputs, model, tokens, instructions, and output from the call.</span></h5>
+  </div> 
+  <div class="readable-text intended-text" id="p100"> 
+   <p>The OpenAI Traces dashboard is convenient because it works out of the box, but it is one option among several. Open-source tools like LangSmith, Langfuse, Arize Phoenix, and Weights and Biases Weave provide framework-agnostic tracing that works across OpenAI, Anthropic, local models, and custom agent stacks. For production agents, especially in regulated environments or with multiprovider setups, an external tracing layer is usually the right choice. We will return to observability in more depth in a later chapter.</p> 
+  </div> 
+  <div class="readable-text" id="p101"> 
+   <p>The figure shows the Traces page on the OpenAI API site. You must use the OpenAI API for your agent models to see results on this page. You can view traces for your agents by clicking a workflow and viewing the results there. </p> 
+  </div> 
+  <div class="readable-text" id="p102"> 
+   <p>You can set a trace in your code to see more specific tracing, including the name of your workflow. The following shows a code snippet that updates the Research Planning agent to use traces and customize the tracing output. </p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p103"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.10 06 agent_with_tracing.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">agent = Agent(
+    name="Research Planner", 
+    instructions=instructions,
+    output_type=ResearchPlanModel,
+    )
+
+input = "learn about AI agents"
+
+with trace("Deep Research Workflow"):    #1
+    result = Runner.run_sync(
+        agent, 
+        input=input,
+        )
+
+print(result.final_output)</pre> 
+    <div class="code-annotations-overlay-container">
+     #1 Puts the trace in a with to wrap agent execution
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p104"> 
+   <p>Now when you go to the Traces page on the OpenAI API site, you can select the named agent workflow and view the results, as shown in figure 2.7.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p105">  
+   <img alt="" src="../Images/CH02_F07_Lanham4.png" style="width: 100%; max-width: max-content;" width="900" height="446"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.7 The Traces page for the Deep Research workflow. This step represents the Research Planner agent making a call to the LLM and receiving a JSON output containing a plan (a list of tasks) to achieve a research goal.</span></h5>
+  </div> 
+  <div class="readable-text" id="p106"> 
+   <p>As shown in the figure, you select a response and then scroll down in the properties panel on the right to see the agent response output. Because the agent is outputting a type internally, the response output is JSON, which is then converted to the <code>ResearchPlanModel</code>.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p107"> 
+   <p>Viewing the trace of an agent and agent workflow can be essential as our agents become more complex. This complexity can take many forms, from collaborating with other agents to working with tools. We will look at how agents work with tools in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p108"> 
+   <h2 class=" readable-text-h2"><span class="num-string">2.4</span> Enhancing agents through tool integration</h2> 
+  </div> 
+  <div class="readable-text" id="p109"> 
+   <p>Agents work best when they have agency, that is, the ability to make and execute decisions. If we apply this rule to our current agent, the research planner, we can see it isn’t an agent. The only thing we have developed thus far is a prompt step. Building an AI workflow with prompt steps is viable and is called <em>prompt chaining</em>.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p110"> 
+   <p>We want to develop flexible and adaptable agents, and this requires agency. The easiest way to give agents agency is to provide them with tools they can decide when and where to use. In the next section, we will look at adding tools to our agents.</p> 
+  </div> 
+  <div class="readable-text" id="p111"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.4.1</span> Providing agents with tools</h3> 
+  </div> 
+  <div class="readable-text" id="p112"> 
+   <p>Tools are the capabilities available to an agent. Actions are what the agent does with them. A tool may be a code function that the agent can call, an external service exposed via a protocol such as MCP (Model Context Protocol), or a handoff to another agent. We may build tools internally or consume external ones. Chapter 3 will examine the many tools an agent can consume through MCP.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p113"> 
+   <p>Figure 2.8 shows patterns an agent may use to consume tools. In this chapter, we focus on internal use within the same code base. In chapter 3, we take a closer look at MCP and how we can use it to consume external tools. MCP allows tools and tool servers to run locally or be hosted remotely and accessed over HTTP.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p114">  
+   <img alt="" src="../Images/CH02_F08_Lanham4.png" style="width: 100%; max-width: max-content;" width="894" height="778"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.8 Various patterns an agent can use to consume tools. Tools may be internal code functions or external connections to MCP servers, hosted locally or remotely and connected using MCP protocols.</span></h5>
+  </div> 
+  <div class="readable-text" id="p115"> 
+   <p>The figure demonstrates how an agent can execute tools, what a tool call looks like, and where those tools may reside. Tools can be local (within the code base), hosted through a process, or external over HTTP. This flexibility gives us many options for building and selecting the tools our agents will consume.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p116"> 
+   <p>Listing 2.11 shows how we would extend our simple research planning agent with a <code>get_research_sources</code> tool. We could add the tool, but a better practice is to be explicit in the prompt instructions about when to use it. The updated prompt now instructs the agent to first pull the available research sources and create a plan that incorporates those sources into each specific task.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p117"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.11 07_agent_with_tool.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">instructions = """    #1
+You are a research planning assistant.
+
+**TASK INSTRUCTIONS**
+- You will be given a research topic.
+- Begin by using the tool get_research_sources() 
+to get a list of available research sources. 
+- Constrain your research plan 
+only to use the available research sources.
+- Your task is to provide a plan for researching this topic.
+- Output 5 concise tasks and specify which of the 
+available research sources will be used for each task.
+"""
+
+class Task(TypedDict):
+    step: int
+    """Task Step."""
+    research_source: str    #2
+    """The source to search."""
+    description: str
+    """Task description."""
+
+class ResearchPlanModel(BaseModel):
+    tasks: list[Task]
+    """Numbered tasks for research."""
+    model_config = ConfigDict(extra='forbid')
+
+
+@function_tool    #3
+def get_research_sources() -&gt; list[str]:
+    """Provides a list of research sources."""
+    search_sources = [    #4
+        "Wikipedia",
+        "Google",
+        "YouTube",
+    ]
+    return search_sources    
+
+agent = Agent(
+    name="Research Planner", 
+    instructions=instructions,
+    output_type=ResearchPlanModel,
+    tools=[get_research_sources],    #5
+    )</pre> 
+    <div class="code-annotations-overlay-container"> #1 Updated prompt instructions that include mention of using the tool
+     <br/>#2 Adds the research source to the task step object
+     <br/>#3 Wraps the function we want to expose as a tool with decorator
+     <br/>#4 For this example, just returns a static list of research sources
+     <br/>#5 Registers the tool with the agent
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p118"> 
+   <p>For this example, we return a static list of available research sources, but in a more practical scenario, we would query the available resources. Then the agent could build a plan and search only those sources. Using patterns like this makes our agents extensible from the ground up. Later, we can develop the query mechanism inside the tool to provide a dynamic list of sources.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p119"> 
+   <p>We can easily expose any internal function with the <code>@function_tool</code> decorator. This decorator creates all the internal plumbing and generates the JSON tool description the agent will use to decide how to execute the tool. It is important to remember that, after you register a tool with an agent, it is included in all calls to the LLM, whether the tool is used or not.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p120"> 
+   <p>While you could provide a single agent with dozens of tools, tool count affects how well the agent picks the right one. Modern frontier models handle more tools than earlier models did, and the practical ceiling depends on how distinct the tools are from each other, how clearly they are described, and how capable the model is. Rather than fixing on a number, plan around the constraints that drive the limit. Several of these are worth knowing, as shown in the following list:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p121"><em>Tools are overhead</em>. The JSON description of every tool you register with an agent gets sent on every LLM call, and as we saw with JSON tokenization in section 2.1.2, that structure is not free. Each tool description adds input tokens, and those tokens are paid on every call regardless of whether the tool is used. For agents who make many calls per task, the cost adds up.</li> 
+   <li class="readable-text" id="p122"><em>Tools add complexity</em>. Each tool you register with an agent adds instructions to the prompt describing how to use the tool. More instructions and longer prompts increase variability and the potential for failures in the system.</li> 
+   <li class="readable-text" id="p123"><em>Tools can fail</em>. Each tool adds another potential point of failure and another surface area where the agent may need to recover. Robust agentic workflows minimize points of failure and plan for the failures that do happen. The common patterns are retries with backoff for transient failures (network timeouts, rate limits), structured error returns the agent can read and respond to (rather than raw exceptions that crash the loop), fallback tools or alternate paths when a primary tool is unavailable, and timeouts so a hanging tool does not stall the agent indefinitely.</li> 
+   <li class="readable-text" id="p124"><em>Tools are decisions</em>. When an agent uses a tool, it makes a decision, which can be both powerful and problematic. Allowing an agent to decide to search for something is okay, but giving it a tool that can delete files may not be wise. Be cognizant of the decisions you empower your agents to make, and be comfortable with the results if they make the wrong one. If you allow an agent to delete files, expect it to delete all the files it has access to.</li> 
+  </ul> 
+  <div class="readable-text" id="p125"> 
+   <p>Tools are potent additions to agents, but they provide many opportunities for misuse and points of failure. Therefore, limiting an agent’s tool use to only what it needs is essential. Fortunately, OpenAI provides, through tracing, a helpful way to identify problems with tool use.</p> 
+  </div> 
+  <div class="readable-text" id="p126"> 
+   <h3 class=" readable-text-h3"><span class="num-string">2.4.2</span> Tracing agentic tool use</h3> 
+  </div> 
+  <div class="readable-text" id="p127"> 
+   <p>Agent tool use can become complex quickly, and the OpenAI Traces page can be invaluable for debugging issues, improving performance, and optimizing workflows. Listing 2.12 shows an updated code example with our Planning Agent now using multiple tools. The agent now has two functions, and one depends on calling the previous one.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p128"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 2.12 08_agent_with_tools_tracing.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">instructions = """
+You are a research planning assistant.
+
+**TASK INSTRUCTIONS**
+- You will be given a research topic.
+- Begin by using the tool get_research_sources() 
+to get a list of available research sources. 
+- Use the tool get_resource_url()    #1
+to look up the url for the research source.
+- Constrain your research plan 
+only to use the available research sources.
+- Your task is to provide a plan for researching this topic.
+- Output 5 concise tasks and specify which of the 
+available research sources will be used for each task.
+"""
+
+class ResearchSource(TypedDict):    #2
+    name: str
+    """Name of the search source."""
+    url: str
+    """URL of the search source."""
+
+
+class Task(TypedDict):
+    step: int
+    """Task Step."""
+    research_source: ResearchSource    #2
+    """The source to search."""
+    description: str
+    """Task description."""
+
+class ResearchPlanModel(BaseModel):
+    tasks: list[Task]
+    """Numbered tasks for research."""
+    model_config = ConfigDict(extra='forbid')
+
+
+@function_tool
+def get_research_sources() -&gt; list[str]:
+    """Provides a list of research sources."""
+    search_sources = [
+        "Wikipedia",
+        "Google",
+        "YouTube",
+    ]
+    return search_sources   
+
+@function_tool
+def get_resource_url(research_soruce: str) -&gt; str:    #3
+    """Provides a url for the research source."""
+    search_sources = {
+        "Wikipedia": "https://www.wikipedia.org",
+        "Google": "https://www.google.com",
+        "YouTube": "https://www.youtube.com",
+    }
+    return search_sources[research_soruce] 
+
+agent = Agent(
+    name="Research Planner", 
+    instructions=instructions,
+    output_type=ResearchPlanModel,
+    tools=[get_research_sources, get_resource_url],    #4
+    )
+
+input = "learn about AI agents"
+
+with trace("Deep Research Workflow (Tools)"):
+    result = Runner.run_sync(
+        agent, 
+        input=input,
+        )
+
+print(result.final_output)</pre> 
+    <div class="code-annotations-overlay-container"> #1 The agent is instructed to use the get_resource_url function to a get a resources URL.
+     <br/>#2 We add a sub type to hold details about the research source.
+     <br/>#3 New function that returns a lookup for the research sources URL
+     <br/>#4 Adds the new function to the list of tools the agent can use
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p129"> 
+   <p>Now the agent is instructed to first get the list of research sources and then use the new <code>get_resource_url</code> tool to look up the URL for each source. This means the agent must make multiple tool calls, some of which depend on the initial tool call. While this example is contrived, it demonstrates a typical pattern in agent tool use called <em>tool chaining</em>.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p130"> 
+   <p>Tool chaining occurs when an agent uses the output of one tool to drive the input of another. In some cases, the prompt instructions define what that chain looks like. More often, we let the agent decide which tools chain into which.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p131"> 
+   <p>Modern frontier models can also issue multiple tool calls in parallel within a single response turn, when the calls are independent of each other. An agent researching a topic might call a search tool, a calendar tool, and a knowledge base lookup all at once, then reason over the combined results. Parallel calls cut latency significantly compared to sequential chains, but they work only when the tools do not depend on each other’s output. The agent (or the developer designing the prompt) decides which is which.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p132"> 
+   <p>The OpenAI Traces page provides an excellent way to view this complex tool chaining. Figure 2.9 shows a screenshot of the Traces page with example traces for the agent in listing 2.12.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p133">  
+   <img alt="" src="../Images/CH02_F09_Lanham4.png" style="width: 100%; max-width: max-content;" width="925" height="537"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 2.9 OpenAI Traces page showing the various tool calls and LLM responses executed by the agent</span></h5>
+  </div> 
+  <div class="readable-text" id="p134"> 
+   <p>As shown in the figure, all agent calls to use tools or prompt the LLM are tracked. This lets us trace the tool chains by looking at the order of events and checking the inputs and outputs of tool calls. From the Traces page, we can also see at a high level when each tool or prompt call is made and how much time it takes.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p135"> 
+   <p>This excellent tracing is included when using the OpenAI API. If you want to use a different API, you can still use the Traces page, but you need to register for the API and use a key. This is an advanced scenario we won’t go into in this book.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p136"> 
+   <p>As we saw in this chapter, agents can be easy to set up and run quickly. But they can also get complicated quickly. To help manage this complexity, tools like the Traces page can be invaluable for understanding what our agents are doing and when.</p> 
+  </div> 
+  <div class="readable-text" id="p137"> 
+   <h2 class=" readable-text-h2"><span class="num-string">2.5</span> Exercises</h2> 
+  </div> 
+  <div class="readable-text" id="p138"> 
+   <p><strong>Exercise 1: Build and run the minimal agent.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p139"> 
+   <p><em>Objectiv</em><em>e</em><strong>:</strong> Create the first-pass Research Planner agent, and verify basic output.</p> 
+  </div> 
+  <div class="readable-text" id="p140"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p141">Open 01_first_agent.py from the listings folder.</li> 
+   <li class="readable-text" id="p142">Save a copy as exercise1_minimal_agent.py.</li> 
+   <li class="readable-text" id="p143">Replace the placeholder text “&lt;user query here&gt;” with “learn about AI agents.”</li> 
+   <li class="readable-text" id="p144">Run the script.</li> 
+   <li class="readable-text" id="p145">Confirm that exactly five numbered tasks appear in the console.</li> 
+  </ol> 
+  <div class="readable-text" id="p146"> 
+   <p><em>Expected duration</em><strong>:</strong> 8 min</p> 
+  </div> 
+  <div class="readable-text" id="p147"> 
+   <p><strong>Exercise 2: Tune the model for determinism.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p148"> 
+   <p><em>Objectiv</em><em>e</em><strong>:</strong> Observe how temperature affects answer consistency.</p> 
+  </div> 
+  <div class="readable-text" id="p149"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p150">Duplicate your file to exercise2_model_tuning.py.</li> 
+   <li class="readable-text" id="p151">In the <code>Agent(...)</code> constructor, set</li> 
+  </ol> 
+  <div class="browsable-container listing-container" id="p152"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">model="gpt-4.1",
+model_settings=ModelSettings(temperature=0.0, max_tokens=150)</pre>  
+   </div> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p153">Run the script twice, and capture both outputs.</li> 
+   <li class="readable-text" id="p154">Raise temperature to 1.0, and run a third time.</li> 
+   <li class="readable-text" id="p155">Add a comment at the bottom noting which lines changed between runs.</li> 
+  </ol> 
+  <div class="readable-text" id="p156"> 
+   <p><em>Expected duration</em><strong>:</strong> 10 min</p> 
+  </div> 
+  <div class="readable-text" id="p157"> 
+   <p><strong>Exercise 3: Enforce strictly typed output.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p158"> 
+   <p><em>Objectiv</em><em>e</em>: Convert the agent to return a structured <code>ResearchPlanModel</code> and fix strict-JSON errors.</p> 
+  </div> 
+  <div class="readable-text" id="p159"> 
+   <p><em>Tasks</em><strong>:</strong></p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p160">Copy exercise2_model_tuning.py to exercise3_typed_output.py. </li> 
+   <li class="readable-text" id="p161">Add the <code>ResearchPlanModel</code> class exactly as in <strong>listing 2.7</strong><span class="CharOverride-6">.</span></li> 
+   <li class="readable-text" id="p162">Set <code>output_type=ResearchPlanModel</code> on the agent. </li> 
+   <li class="readable-text" id="p163">Run the script, and observe the <code>UserError</code> about strict JSON.</li> 
+   <li class="readable-text" id="p164">Replace <code>dict[int, str]</code> with the <code>TypedDict</code> solution from <strong>listing 2.9</strong> and rerun.</li> 
+   <li class="readable-text" id="p165">Verify the final console output is a JSON-like list of <code>five {</code><code>"</code><code>id</code><code>"</code><code>: …, </code><code>"</code><code>description</code><code>"</code><code>: …}</code> objects.</li> 
+  </ol> 
+  <div class="readable-text" id="p166"> 
+   <p><em>Expected duration</em><em>:</em> 12 min</p> 
+  </div> 
+  <div class="readable-text" id="p167"> 
+   <p><strong>Exercise 4: Apply prompt-engineering best practices.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p168"> 
+   <p><em>Objectiv</em><em>e</em>: Refine the prompt to use delimiters, explicit role, and length limits.</p> 
+  </div> 
+  <div class="readable-text" id="p169"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p170">Duplicate the previous file as exercise4_prompt_refinement.py. </li> 
+   <li class="readable-text" id="p171">Rewrite instructions so they follow at least four techniques from table 2.2 (for example, a clear persona, delimiters, a specific length, and positive wording).</li> 
+   <li class="readable-text" id="p172">Add a Markdown code fence (<code>```</code>) around the TASK block to act as a delimiter.</li> 
+   <li class="readable-text" id="p173">Keep the temperature at 0, and run the script twice.</li> 
+   <li class="readable-text" id="p174">Confirm each run returns exactly five tasks, each ≤ 7 words (tight length spec).</li> 
+  </ol> 
+  <div class="readable-text" id="p175"> 
+   <p><em>Expected duration</em> 12 min</p> 
+  </div> 
+  <div class="readable-text" id="p176"> 
+   <p><strong>Exercise 5: Add an internal tool, and trace it.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p177"> 
+   <p><em>Objectiv</em><em>e</em>: Give the agent a <code>get_research_sources</code> tool, and inspect traces.</p> 
+  </div> 
+  <div class="readable-text" id="p178"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p179">Copy the last file to exercise5_tool_and_tracing.py.</li> 
+   <li class="readable-text" id="p180">Implement <code>get_research_sources()</code> exactly as in listing 2.11, and then register it with <code>tools=[get_research_sources]</code>.</li> 
+   <li class="readable-text" id="p181">Update the prompt so the first step instructs the agent to call that tool.</li> 
+   <li class="readable-text" id="p182">Wrap the <code>Runner.run_sync</code> call in</li> 
+  </ol> 
+  <div class="browsable-container listing-container" id="p183"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">with trace("Chapter 2 Tool Demo"):
+    ...</pre>  
+   </div> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p184">Run the script once.</li> 
+   <li class="readable-text" id="p185">Open OpenAI &gt; Dashboard &gt; Traces, and verify a single tool call appears before the LLM response.</li> 
+  </ol> 
+  <div class="readable-text" id="p186"> 
+   <p><em>Expected duration</em><strong>:</strong> 15 min</p> 
+  </div> 
+  <div class="readable-text" id="p187"> 
+   <h2 class=" readable-text-h2">Summary</h2> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p188">Large language models are probabilistic token-predictors. Understanding token­ization and probability drives effective cost, context, and quality control.</li> 
+   <li class="readable-text" id="p189">Text length does not equal token length: measure tokens (e.g., with tiktoken or the Agents SDK telemetry) to keep budgets and context windows in check.</li> 
+   <li class="readable-text" id="p190">Generation knobs such as temperature, top-<em>p</em>, max_tokens, and penalty terms let you trade off creativity, consistency, and expense for each agent role.</li> 
+   <li class="readable-text" id="p191">Carefully crafted prompts follow the basic rules of clear persona, front-loaded instructions, structured delimiters, few-shot examples, and chain-of-thought, steering LLMs toward reliable, on-spec output.</li> 
+   <li class="readable-text" id="p192">Well-structured prompts avoid common pitfalls (over-complexity, contradictions, ambiguous delimiters, or variable output) and make agents safer and cheaper. </li> 
+   <li class="readable-text" id="p193">The OpenAI Agents SDK turns a prompt into a runnable agent; you can pin specific models and parameter settings to match the agent’s task profile.</li> 
+   <li class="readable-text" id="p194">Typed input/output schemas (Pydantic) eliminate brittle string parsing and keep multi-agent workflows stable despite the LLM’s stochastic nature.</li> 
+   <li class="readable-text" id="p195">Built-in tracing in the OpenAI API exposes every LLM interaction and tool invocation, providing valuable visibility for debugging and optimization.</li> 
+   <li class="readable-text" id="p196">Granting agents tools, local functions now and MCP-hosted services later, provides true agency; limit the tool list to reduce token overhead and failure risk.</li> 
+   <li class="readable-text" id="p197">Tool chaining lets an agent sequence multiple tool calls autonomously; trace data reveals the decision path and highlights performance bottlenecks.</li> 
+   <li class="readable-text" id="p198">Combining prompt engineering, model tuning, typed schemas, tracing, and curated tool sets yields production-ready agents that can confidently plan, reason, and execute deep research tasks.</li> 
+  </ul>
+ </div></div></body></html>

@@ -1,0 +1,1379 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-numbering"><span class="num-string">6</span> </span><span class="chapter-title-text">Working with memory and knowledge RAG for agents</span></h1> 
+  </div> 
+  <div class="introduction-summary"> 
+   <h3 class="introduction-header"><span class="CharOverride-1">This chapter covers</span><span class="CharOverride-1"></span></h3> 
+   <ul> 
+    <li class="readable-text" id="p2"><span class="CharOverride-2">Understanding retrieval in AI applications</span></li> 
+    <li class="readable-text" id="p3"><span class="CharOverride-2">Vector databases and similarity search</span></li> 
+    <li class="readable-text" id="p4"><span class="CharOverride-2">Building practical knowledge of RAG agents</span></li> 
+    <li class="readable-text" id="p5"><span class="CharOverride-2">Adding memory to agents with MCP</span></li> 
+   </ul> 
+  </div> 
+  <div class="readable-text intended-text" id="p6"> 
+   <p>The agents we have built so far are bounded by what is already in their training data. They cannot answer questions about a document the user uploaded yesterday, cite a policy that was published last week, or remember what they discussed with the user in their last conversation. These are real limits, and they show up the moment an agent has to work with information the model has not seen.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p7"> 
+   <p>This chapter is about closing those gaps. We start with retrieval, the mechanism for finding relevant information from outside the model’s training and bringing it into the agent’s context at the right moment. Retrieval is what enables an agent to answer questions about documents, policies, codebases, and other external knowledge sources.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p8"> 
+   <p>From retrieval, we move to memory, which is retrieval applied to the agent’s own past experiences. Memory is what lets an agent remember user preferences across sessions, recall what it tried on a previous attempt, and build context that compounds rather than resets. Together, retrieval and memory turn an agent from a stateless reasoner into a system that can know things and remember them.</p> 
+  </div> 
+  <div class="readable-text" id="p9"> 
+   <h2 class=" readable-text-h2"><span class="num-string">6.1</span> Understanding retrieval in AI applications</h2> 
+  </div> 
+  <div class="readable-text" id="p10"> 
+   <p>Retrieval in agent and chat applications is a mechanism for obtaining knowledge or memories stored in external, long-lived storage. Unstructured knowledge includes conversation or task histories, facts, preferences, and other items needed to contextualize a prompt. Structured knowledge, normally stored in databases or files, is accessed through native functions or plugins.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p11"> 
+   <p>Memories may include previous conversation threads, past agent experiences, facts or preferences about the user, and other experiential information. The agent can, in principle, access arbitrarily large memory stores because the storage lives outside the LLM, in a database, vector store, or filesystem that grows independently of any model’s context window.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p12"> 
+   <p>What is bounded is what the agent can use on any single LLM call. The context window is the limit on how much fits into a single prompt, and modern models range from roughly 200,000 to over a million tokens. Retrieval is the bridge between unbounded external storage and bounded per-call context: the agent searches the larger store and brings only the most relevant pieces into the current call’s context.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p13"> 
+   <p>Table 6.1 demonstrates examples of different forms of knowledge and memory, their source, how they may be stored, and the retrieval/search process for augmentation.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p14"> 
+   <h5 class=" browsable-container-h5">Table 6.1 Sources, storage formats, and retrieval mechanisms of knowledge and memory used in agent applications </h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-1"/> 
+     <col class="_idGenTableRowColumn-1"/> 
+     <col class="_idGenTableRowColumn-1"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-2"> 
+      <td class="No-Table-Style CellOverride-1"> <p class="_TableHead">Source</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Storage format</p> </td> 
+      <td class="No-Table-Style CellOverride-3"> <p class="_TableHead">Retrieval mechanism</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-3"> 
+      <td class="No-Table-Style CellOverride-4"> <p class="_TableBody">Memory (short-term)—previous conversation thread</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Agent/user conversation thread stored as text</p> </td> 
+      <td class="No-Table-Style CellOverride-6"> <p class="_TableBody">Provided automatically as message history</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Memory (long-term)—previous user conversations</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Summarized memories stored as text or in a vector database (semantic)</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Semantic/vector search</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-3"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Knowledge (unstructured), documents (PDFs)</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Vector database (semantic) and text document index</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Semantic/vector search and keyword search</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-3"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody">Knowledge (structured), database tables, structured logs </p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Same format as source</p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Relational database queries, log parsing</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p15"> 
+   <p>Memory and knowledge, as shown in figure 6.1, are elements used to add further context and relevant information to a system prompt or agent instructions. Agent and prompt instructions can be augmented with context ranging from information about a document to previous tasks, conversations, and other related information. In both cases, knowledge and memory context are obtained from external sources, such as vector databases, document indexes, databases, and other places where data can be stored and retrieved through search.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p16">  
+   <img alt="" src="../Images/CH06_F01_Lanham4.png" style="width: 100%; max-width: max-content;" width="913" height="583"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.1 The process of retrieval for both memory and knowledge and how it combines with augmentation</span></h5>
+  </div> 
+  <div class="readable-text" id="p17"> 
+   <p>Retrieval and augmentation are key elements for exposing knowledge and memory to agents. Retrieval is the process of searching for information given some form of context, typically the user’s input. Augmentation is the process of providing retrieved information as additional context in a prompt to an LLM.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p18"> 
+   <p>Knowledge is external information, such as documents, PDFs, database tables, and other external sources. Likewise, memory is the structured or unstructured capture of experiences that may provide additional context to help answer a question or achieve a goal. Both knowledge and memory data sources rely on retrieval to query the structured or unstructured information they contain.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p19"> 
+   <p>The combined retrieval and augmentation mechanism, called <em>retrieval-augmented generation</em> (RAG), has become a standard for providing relevant context for a prompt. The exact mechanism that powers RAG also powers memory and knowledge, and it’s essential to understand how it works.</p> 
+  </div> 
+  <div class="readable-text" id="p20"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.1.1</span> The basics of RAG</h3> 
+  </div> 
+  <div class="readable-text" id="p21"> 
+   <p>RAG has become a popular mechanism for document chat and question-and-answer applications. The user supplies a document, such as a PDF, the system embeds it into a vector store using an embedding model, and a separate large language model generates the answer using the chunks retrieved from that store. The embedding model and the LLM are two different models doing two different jobs: the embedder encodes text into vectors for similarity search, and the LLM produces the final response.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p22"> 
+   <p>Figure 6.2 breaks RAG into two phases: ingestion and retrieval. In ingestion, documents are loaded, transformed into context chunks, embedded as vectors, and stored in a searchable vector database. In retrieval, a user query is embedded into the same vector space, the most similar chunks are pulled from the database, and those chunks become context for the LLM to generate an answer.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p23">  
+   <img alt="" src="../Images/CH06_F02_Lanham4.png" style="width: 100%; max-width: max-content;" width="927" height="596"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.2 RAG can be broken into two phases: ingestion and retrieval. First, documents are loaded, transformed, embedded, and stored in a searchable datastore. Second, they can be retrieved using query mechanisms as part of context augmentation.</span></h5>
+  </div> 
+  <div class="readable-text" id="p24"> 
+   <p>A user can query previously ingested and indexed documents by submitting a query. The query is then embedded as a vector representation to search for similar chunks in the vector database. Similar content is then used as context and added to the prompt as augmentation. The prompt is sent to an LLM, which can use that context to help answer the query.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p25"> 
+   <p>For example, if the user queries “capital of France,” that query is converted to a dense vector representation using an embedding model. The vector is then used to find similar matches in a vector database. When a match is found (“capital of France is Paris”), it is returned and added to the prompt fed to the LLM, which uses that context to give an answer that is correct and grounded in retrieved knowledge.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p26"> 
+   <p>A vector database is a specialized data store designed for similarity search over vectors rather than exact lookup over rows. Traditional databases answer questions like “find the row where user_id equals 42.” Vector databases answer questions like “find the rows whose vectors are most similar to this query vector,” ranked by similarity score.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p27"> 
+   <p>The “dense” in <em>dense vector database</em> refers to the embeddings themselves. Dense vectors pack semantic meaning into every dimension (typically 384 to 3,072 floating-point numbers per vector), unlike sparse vectors which are mostly zeros. Popular vector databases in 2026 include Pinecone, Qdrant, Weaviate, Turbopuffer, and pgvector (a Postgres extension that adds vector search to a database you may already be running). </p> 
+  </div> 
+  <div class="readable-text" id="p28"> 
+   <h4 class=" readable-text-h4">Why do agents need knowledge?</h4> 
+  </div> 
+  <div class="readable-text" id="p29"> 
+   <p>LLMs are trained on vast sources of information, but their internal knowledge is fixed at training time. An agent built on a model with a 2025 training cutoff cannot tell you today’s stock price, the current weather in Calgary, the latest exchange rate between CAD and USD, last night’s game scores, the most recent version of your company’s pricing policy, or anything that happened after the cutoff.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p30"> 
+   <p>Retrieval-augmented generation closes this gap by allowing the agent to retrieve current information from external sources at query time. The model is no longer the only source of knowledge in the system; it is the reasoning layer on top of knowledge retrieved from documents, databases, APIs, or anywhere else the agent can access. This shifts the agent from “what the model remembers from training” to “what the model can reason about given the current context.”</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p31"> 
+   <p>Unstructured memory and knowledge concepts often rely on semantic similarity search rather than keyword matching, following the retrieval pattern shown in figure 6.2. Semantic search compares the meaning of a query to the meaning of stored content using dense vector embeddings, so a query about “vehicles” can match content about “cars” even though the words are different.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p32"> 
+   <p>Figure 6.3 shows how memory uses the same embedding and vector database components, but with conversations as input rather than preloaded documents. Parts of a conversation are embedded and saved in the vector database, and later turns of the same conversation (or future conversations) can retrieve the relevant previous content based on semantic similarity.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p33">  
+   <img alt="" src="../Images/CH06_F03_Lanham4.png" style="width: 100%; max-width: max-content;" width="894" height="588"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.3 Memory retrieval for augmented generation uses the same embedding patterns to index items in a vector database.</span></h5>
+  </div> 
+  <div class="readable-text" id="p34"> 
+   <p>The retrieval pattern and document indexing are nuanced and require careful consideration to be used successfully. This requires understanding how data is stored and retrieved, which we’ll begin to unpack in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p35"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.1.2</span> Delving into semantic search and document indexing</h3> 
+  </div> 
+  <div class="readable-text" id="p36"> 
+   <p>Document indexing transforms a document’s information so it can be semantically recovered. How the index will be queried or searched also plays a role, whether searching for a particular set of words or wanting to match phrase for phrase.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p37"> 
+   <p>Semantic search finds content that matches a query by meaning rather than by surface keywords, which is powerful and eliminates the need to construct keyword queries or maintain synonym lists. As covered in the previous section, this is how RAG and memory retrieval both work: they use the same dense vector embeddings to compare the meaning of a query against stored content.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p38"> 
+   <p>The capability has three pitfalls worth naming. Semantic similarity does not mean semantic correctness, so a result can match the meaning of the query closely while being factually wrong (a search for “best treatment for migraines” can return content that sounds like treatment advice but is outdated, incorrect, or from an untrustworthy source). The retrieval has no view into truth, only into similarity.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p39"> 
+   <p>Most vector searches return a fixed top-<em>K</em>, typically the five or ten most similar matches. Relevant content at rank 11 gets dropped, which can matter when the query has multiple distinct correct answers or when the relevant information is phrased less similarly than expected. Tuning <em>K</em> and re-ranking with secondary signals are common mitigations.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p40"> 
+   <p>The search itself is approximate rather than exact. Vector databases use approximate nearest neighbor algorithms that trade some accuracy for speed, so the “most similar” result is “very likely the most similar” rather than guaranteed. For most applications, this is fine, but it is worth knowing when debugging unexpected retrieval misses.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p41"> 
+   <p>With semantic search, we can search for the concept or meaning rather than relying on exact keywords or phrases. Take, for example, the search term “dog.” If we were searching for the word, we would only find documents that mention it. Using a semantic representation of “dog” allows us to match documents that may mention dogs. It can also match particular breeds like a cockapoo, or even puppy care and related activities.</p> 
+  </div> 
+  <div class="readable-text" id="p42"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.1.3</span> Applying vector similarity search</h3> 
+  </div> 
+  <div class="readable-text" id="p43"> 
+   <p>Before we look at semantic embeddings, it helps to see a simpler approach that does not capture meaning. <span class="CharOverride-4">Term </span><em>Frequency-Inverse Document Frequency</em> (TF-IDF) is a classic technique that converts text into a sparse vector based on which words appear and how distinctive each word is across a corpus. It is not a semantic representation, but it is a useful starting point because the mechanics are easy to follow.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p44"> 
+   <p>TF-IDF measures term importance, not meaning. A query about “vehicles” will not match a document about “cars” under TF-IDF because the words are different, even though the meaning is the same. This is the limitation that semantic embeddings (covered in the next section) are designed to solve.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p45"> 
+   <p>Semantic embeddings come from neural networks trained to map text into a dense vector space where similar meanings end up near each other regardless of surface vocabulary. The training is what gives semantic embeddings their power and distinguishes them from term-counting approaches like TF-IDF. We start with TF-IDF because the implementation is simpler and then move to semantic embeddings, where the real retrieval performance comes from. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p46"> 
+   <p>Open the chapter_06 folder in a new Visual Studio Code (VS Code) workspace. Create a new environment, and use <code>pip</code> to <code>install</code> the requirements.txt file with all the chapter dependencies. If you need help setting up a new Python environment, consult appendix A.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p47"> 
+   <p>Now open the document_vector_similarity.py file in VS Code, and review the top section in listing 6.1. This example uses TF-IDF. This numerical statistic reflects how important a word is to a document in a collection or set of documents. It increases proportionally to the number of times the word appears in the document and is offset by the word’s frequency in the document set. TF-IDF is a classic measure for understanding the importance of a word within a set of documents.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p48"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.1 document_vector_similarity (transform to vector)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">import plotly.graph_objects as go
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+documents = [     #1
+    "The sky is blue and beautiful.",
+    "Love this blue and beautiful sky!",
+    "The quick brown fox jumps over the lazy dog.",
+    "A king's breakfast has sausages, ham, bacon, eggs, toast, and beans",
+    "I love green eggs, ham, sausages and bacon!",
+    "The brown fox is quick and the blue dog is lazy!",
+    "The sky is very blue and the sky is very beautiful today",
+    "The dog is lazy but the brown fox is quick!"
+]
+
+vectorizer = TfidfVectorizer()    #2
+X = vectorizer.fit_transform(documents)   #3</pre> 
+    <div class="code-annotations-overlay-container"> #1 Samples of documents
+     <br/>#2 Vectorization using TF-IDF
+     <br/>#3 Vectorizes the documents
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p49"> 
+   <p>Let’s break down TF-IDF into its two components using the sample sentence “The sky is blue and beautiful” and focusing on the word <em>blue</em>.</p> 
+  </div> 
+  <div class="readable-text" id="p50"> 
+   <h4 class=" readable-text-h4">Term Frequency</h4> 
+  </div> 
+  <div class="readable-text" id="p51"> 
+   <p><em>Term Frequency</em> (TF) measures how frequently a term occurs in a document. Because we’re considering only a single document (our sample sentence), the simplest form of the TF for <em>blue</em> is the number of times <em>blue</em> appears in the document divided by the total number of words in the document. Let’s calculate it:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p52"> 
+   <p>Number of times <em>blue</em> appears in the document: 1 </p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p53"> 
+   <p>Total number of words in the document: 6 </p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p54"> 
+   <p>TF = 1 ÷ 6TF = .16 </p> 
+  </div> 
+  <div class="readable-text" id="p55"> 
+   <h4 class=" readable-text-h4">Inverse Document Frequency</h4> 
+  </div> 
+  <div class="readable-text" id="p56"> 
+   <p>Inverse Document Frequency (IDF) measures how important a term is within the entire corpus. It is calculated by dividing the total number of documents by the number of documents containing the term and then taking the logarithm of that quotient. In practice, implementations add a small constant to the denominator (log(<em>N</em>/(<em>n</em>+<span class="CharOverride-5">ε</span>))) to avoid division by zero when a term does not appear in any document:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p57"> 
+   <p>IDF = log(Total number of documents ÷ Number of documents containing the word) </p> 
+  </div> 
+  <div class="readable-text" id="p58"> 
+   <p>In this example, the corpus is a small collection of eight documents, and <em>blue</em> appears in four of these documents:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p59"> 
+   <p>IDF = log(8 ÷ 4) </p> 
+  </div> 
+  <div class="readable-text" id="p60"> 
+   <h4 class=" readable-text-h4">TF-IDF calculation</h4> 
+  </div> 
+  <div class="readable-text" id="p61"> 
+   <p>Finally, the TF-IDF score for <em>blue</em> in our sample sentence is calculated by multiplying the TF and the IDF scores:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p62"> 
+   <p>TF – IDF = TF × IDF </p> 
+  </div> 
+  <div class="readable-text" id="p63"> 
+   <p>Let’s compute the actual TF-IDF value for the word <em>blue</em> using the example provided. First, the term frequency (how often the word occurs in the document) is computed as follows:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p64"> 
+   <p>TF = 1 ÷ 6 </p> 
+  </div> 
+  <div class="readable-text" id="p65"> 
+   <p>Assuming the base of the logarithm is 10 (commonly used), the inverse document frequency is computed as follows: </p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p66"> 
+   <p>IDF = log<span class="CharOverride-6">10</span>(8 ÷ 4) </p> 
+  </div> 
+  <div class="readable-text" id="p67"> 
+   <p>Now let’s calculate the exact TF-IDF value for the word <em>blue</em> in the sentence “The sky is blue and beautiful”:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p68"> 
+   <p>The Term Frequency (TF) is approximately 0.1670. </p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p69"> 
+   <p>The Inverse Document Frequency (IDF) is approximately 0.301. </p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p70"> 
+   <p>Thus, the TF-IDF (TF × IDF) score for <em>blue</em> is approximately 0.050. </p> 
+  </div> 
+  <div class="readable-text" id="p71"> 
+   <p>This TF-IDF score indicates the relative importance of the word <em>blue</em> in the given document (the sample sentence). It does this within the context of the specified corpus (eight documents, with <em>blue</em> appearing in four of them). Higher TF-IDF scores imply greater importance.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p72"> 
+   <p>TF-IDF is used here because it is simple to apply and understand. With elements represented as vectors, we can measure document similarity using cosine similarity, which measures the cosine of the angle between two nonzero vectors. This indicates how similar they are regardless of vector magnitude.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p73"> 
+   <p>Cosine similarity is the default choice for both sparse vectors (TF-IDF) and dense vectors (semantic embeddings) because it ignores magnitude and focuses on direction. Two documents that share the same proportional mix of features are treated as similar, even if one is much longer than the other, which aligns with what we usually want from retrieval. The alternative metrics (Euclidean distance, dot product) are sensitive to magnitude, which can be useful in some retrieval setups but often introduces noise due to differences in document length.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p74"> 
+   <p>Cosine similarity works well on TF-IDF in practice but has known limitations when vectors are extremely sparse. With sparse vectors, two documents can share only a few terms and still register as similar by angle, which can produce false matches due to rare-term overlap. Semantic embeddings are dense by design, which is part of why retrieval quality improves when we move from TF-IDF to semantic embeddings in the next section.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p75"> 
+   <p>Figure 6.4 shows how cosine distance compares the vector representations of two pieces of text or text documents. Cosine similarity returns a value from –1 (not similar) to 1 (identical). <em>Cosine distance</em> is a normalized value ranging from 0 to 2, derived by subtracting the cosine similarity from 1. A cosine distance of 0 means identical items, and 2 indicates complete opposites. In this example, the vectors are nonnegative and lie in [0, 1], so the similarities will be between 0 and 1.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p76">  
+   <img alt="" src="../Images/CH06_F04_Lanham4.png" style="width: 100%; max-width: max-content;" width="548" height="328"/> 
+   <h5 class=" figure-container-h5">Figure 6.4 Cosine similarity search measures the angular difference between vectors in any dimensional space. </h5>
+  </div> 
+  <div class="readable-text" id="p77"> 
+   <p>Before walking through listing 6.2, the underlying mechanics are worth surfacing because the code makes more sense once you see what is being computed. Each sentence in the corpus is converted into a vector by TF-IDF, where each position in the vector corresponds to one term in the corpus vocabulary. The value at each position is the TF-IDF score for that term in that sentence, so a sentence with five hundred unique terms in a corpus of ten thousand unique terms becomes a vector of length ten thousand, mostly zeros, with values at the positions corresponding to the sentence’s terms.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p78"> 
+   <p>The cosine similarity function compares vectors pairwise. Comparing every sentence against every other sentence produces a matrix where row <em>i</em>, column <em>j</em> contains the similarity score between sentence <em>i</em> and sentence <em>j</em>. The matrix is symmetric (similarity from A to B equals similarity from B to A) and has ones on the diagonal (every sentence is identical to itself).</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p79"> 
+   <p>Listing 6.2 shows this computation using the <code>cosine_similarity</code> function from scikit-learn. The computed matrix is stored in the <code>cosine_similarities</code> variable, and the input loop allows the user to select a document to view its similarity scores relative to the others. Looking at a row of the matrix tells you how similar one document is to every other document in the corpus.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p80"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.2 document_vector_similarity (cosine similarity)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">cosine_similarities = cosine_similarity(X)     #1
+
+while True:     #2
+    selected_document_index = input(f"Enter a document number
+<span class="CharOverride-7">➥</span> (0-{len(documents)-1}) or 'exit' to quit: ").strip()
+
+    if selected_document_index.lower() == 'exit':
+        break
+
+    if not selected_document_index.isdigit() or 
+<span class="CharOverride-7">➥</span> not 0 &lt;= int(selected_document_index) &lt; len(documents):
+        print("Invalid input. Please enter a valid document number.")
+        continue
+
+    selected_document_index = int(selected_document_index)   #3
+
+    selected_document_similarities = cosine_similarities[selected_document_index]  #4
+
+# code to plot document similarities omitted</pre> 
+    <div class="code-annotations-overlay-container"> #1 Computes the document similarities for all vector pairs
+     <br/>#2 The main input loop
+     <br/>#3 Gets the selected document index to compare with
+     <br/>#4 Extracts the computed similarities against all documents
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p81"> 
+   <p>Figure 6.5 shows the output of running the sample in VS Code (press F5 on the keyboard for debugging mode). After you select a document, you’ll see the similarities among the various documents in the set. A document will have a cosine similarity of 1 with itself. Note that you won’t see a negative similarity because of the TF-IDF vectorization. We’ll look later at other more sophisticated ways to measure semantic similarity.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p82">  
+   <img alt="" src="../Images/CH06_F05_Lanham4.png" style="width: 100%; max-width: max-content;" width="844" height="388"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.5 The cosine similarity between selected documents and the document set</span></h5>
+  </div> 
+  <div class="readable-text" id="p83"> 
+   <p>The method of vectorization dictates the measure of semantic similarity between documents. Before we move on to better methods for vectorizing documents, we’ll examine how vectors are stored for vector similarity searches.</p> 
+  </div> 
+  <div class="readable-text" id="p84"> 
+   <h2 class=" readable-text-h2"><span class="num-string">6.2</span> Vector databases and similarity search</h2> 
+  </div> 
+  <div class="readable-text" id="p85"> 
+   <p>After vectorizing documents, they can be stored in a vector database for later similarity searches. To show how this works, we can efficiently replicate a simple vector database in Python code.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p86"> 
+   <p>Open document_vector_database.py in VS Code, as shown in listing 6.3. This code demonstrates creating a vector database in memory and allows users to enter text to search the database and return results. The returned results show the document text and the similarity score.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p87"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.3 document_vector_database.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area"># code above omitted
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(documents)
+vector_database = X.toarray()    #1
+
+def cosine_similarity_search(query,
+                             database, 
+                             vectorizer, 
+                             top_n=5):    #2
+    query_vec = vectorizer.transform([query]).toarray()
+    similarities = cosine_similarity(query_vec, database)[0]
+    top_indices = np.argsort(-similarities)[:top_n]  # Top n indices
+    return [(idx, similarities[idx]) for idx in top_indices]
+
+while True:     #3
+    query = input("Enter a search query (or 'exit' to stop): ")
+    if query.lower() == 'exit':
+        break
+    top_n = int(input("How many top matches do you want to see? "))
+    search_results = cosine_similarity_search(query,
+                                              vector_database, 
+                                              vectorizer, 
+                                              top_n)
+
+    print("Top Matched Documents:")
+    for idx, score in search_results:
+        print(f"- {documents[idx]} (Score: {score:.4f})")  #4
+
+    print("\n")
+###Output
+Enter a search query (or 'exit' to stop): blue
+How many top matches do you want to see? 3
+Top Matched Documents:
+- The sky is blue and beautiful. (Score: 0.4080)
+- Love this blue and beautiful sky! (Score: 0.3439)
+- The brown fox is quick and the blue dog is lazy! (Score: 0.2560)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Stores the document vectors into an array
+     <br/>#2 The function to perform similarity matching on query returns, matches, and similarity scores
+     <br/>#3 The main input loop
+     <br/>#4 Loops through results and outputs text and similarity score
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p88"> 
+   <p>Run this exercise to see the output (F5 in VS Code). Enter any text you like, and see the results returned. This search form works well for matching words and phrases with similar words and phrases, but it misses the context and meaning of the words in the document. So we need a way to transform documents into vectors that better preserve their semantic meaning.</p> 
+  </div> 
+  <div class="readable-text" id="p89"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.2.1</span> Demystifying document embeddings</h3> 
+  </div> 
+  <div class="readable-text" id="p90"> 
+   <p>TF-IDF is a purely statistical method that captures word importance based on frequency. It does not attempt to capture semantic meaning, and treating it as a flawed semantic technique misses what it does well. For queries where the exact terms matter (looking up a specific name, code, or rare keyword), TF-IDF is fast, predictable, and often more accurate than semantic embeddings.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p91"> 
+   <p>The limitation is that TF-IDF cannot match by meaning. A query about “vehicles” will not match a document about “cars” because the surface words differ, regardless of how related the concepts are. Semantic embeddings address this by mapping text into a vector space where related meanings end up near each other, which is what the next section covers.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p92"> 
+   <p>In production, the strongest retrieval systems often combine both. Hybrid retrieval, as we will see later, runs a TF-IDF (or BM25) search alongside a semantic embedding search and merges the results, giving the system both exact-keyword precision and meaning-based recall. TF-IDF is not unreliable. It is one of two signals worth having.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p93"> 
+   <p>Embedding networks are neural networks trained to map text into dense vectors where semantically similar text ends up near similar coordinates. Pretrained models are available from OpenAI, Anthropic, Cohere, Hugging Face, and open-source projects like sentence-transformers. The output is typically a vector of 384 to 3,072 floating-­point numbers depending on the model.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p94"> 
+   <p>The jump from TF-IDF to neural embeddings is large, and the mechanism is worth understanding at least roughly. During training, the network is shown massive amounts of text and learns to predict context (what word follows, which sentences relate, which passages answer which questions). That training pressure forces the network to encode meaning into geometry, because predicting context accurately requires representing semantic structure, not just surface tokens.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p95"> 
+   <p>One practical tradeoff is worth flagging. TF-IDF dimensions have human-readable meanings (each position corresponds to a known term), while neural embedding dimensions have learned meanings the network creates for itself. The vectors are interpretable through their relationships (similarity, distance, direction) but not through their individual values.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p96"> 
+   <p>In our next scenario, we will use an OpenAI embedding model. These models are strong general-purpose embeddings that work well across a wide range of common content, though they are not perfect. They encode biases from their training data, miss nuances in specialized domains (legal, medical, code, languages with limited training data), and can behave inconsistently across very different content types.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p97"> 
+   <p>Listing 6.4 shows the relevant code that uses OpenAI to embed the documents into vectors, which are then reduced to three dimensions and rendered into a plot. For production retrieval where domain accuracy matters, the right move is to evaluate multiple embedding models against your specific content and queries rather than defaulting to whatever is convenient.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p98"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.4 document_visualizing_embeddings.py (relevant sections)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">load_dotenv()   #1
+api_key = os.getenv('OPENAI_API_KEY')
+if not api_key:
+    raise ValueError("No API key found. Please check your .env file.")
+client = OpenAI(api_key=api_key)     #1
+
+def get_embedding(text, model="text-embedding-ada-002"):    #2
+    text = text.replace("\n", " ")
+    return client.embeddings.create(input=[text],
+              model=model).data[0].embedding                #2
+
+embeddings = [get_embedding(doc) for doc in documents]   #3
+print(embeddings_array.shape)
+
+embeddings_array = np.array(embeddings)   #4
+
+pca = PCA(n_components=3)  #5
+reduced_embeddings = pca.fit_transform(embeddings_array)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Joins all the items on the string ‘, ‘
+     <br/>#2 Uses the OpenAI client to create the embedding
+     <br/>#3 Generates embeddings for each document of size 1536 dimensions
+     <br/>#4 Converts embeddings to a NumPy array for PCA
+     <br/>#5 Applies PCA to reduce dimensions to 3 for plotting
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p99"> 
+   <p>When a document is embedded using an OpenAI model, the text is transformed into a 1536-dimensional vector. We can’t visualize that many dimensions, so we use a dimensionality reduction technique, principal component analysis (PCA), to convert the 1536-dimensional vector to 3 dimensions.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p100"> 
+   <p>Figure 6.6 shows the output generated by running the file in VS Code. By reducing the embeddings to 3D, we can plot them to show how semantically similar documents are grouped.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p101">  
+   <img alt="" src="../Images/CH06_F06_Lanham4.png" style="width: 100%; max-width: max-content;" width="844" height="491"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.6 Embeddings in 3D, showing how semantically similar documents are grouped</span></h5>
+  </div> 
+  <div class="readable-text" id="p102"> 
+   <p>You choose which embedding model or service to use. The OpenAI embedding models are considered the best for general semantic similarity, which has made them the standard for most memory and retrieval applications. With our understanding of how text can be vectorized with embeddings and stored in a vector database, we can move on to a more realistic example in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p103"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.2.2</span> Querying document embeddings from Chroma DB</h3> 
+  </div> 
+  <div class="readable-text" id="p104"> 
+   <p>We can combine all the pieces and look at a complete example using a local vector database called Chroma DB. Many vector database options exist, but Chroma DB is an excellent local vector store for development or small-scale projects. There are also more robust options you can consider later.</p> 
+  </div> 
+  <div class="readable-text" id="p105"> 
+   <p>Listing 6.5 shows the new and relevant code sections from the document_query_­chromadb.py file. Note that the results are scored by distance and not by similarity. Cosine distance is determined by this equation:</p> 
+  </div> 
+  <div class="readable-text centered-text equation-paragraph" id="p106"> 
+   <p>Cosine Distance(A,B) = 1 – Cosine Similarity(A,B) </p> 
+  </div> 
+  <div class="readable-text" id="p107"> 
+   <p>This means that cosine distance ranges from 0 for the most similar items to 2 for items that are semantically opposite in meaning.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p108"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.5 document_query_chromadb.py (relevant code sections)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">embeddings = [get_embedding(doc) for doc in documents]    #1
+ids = [f"id{i}" for i in range(len(documents))]            #2
+
+chroma_client = chromadb.Client()              #2
+collection = chroma_client.create_collection( #2
+                       name="documents")        #2
+collection.add(    #3
+    embeddings=embeddings,
+    documents=documents,
+    ids=ids
+)
+
+def query_chromadb(query, top_n=2):     #4
+    query_embedding = get_embedding(query)
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_n
+    )
+    return [(id, score, text) for id, score, text in
+            zip(results['ids'][0],
+                results['distances'][0], 
+                results['documents'][0])]
+
+while True:    #5
+    query = input("Enter a search query (or 'exit' to stop): ")
+    if query.lower() == 'exit':
+        break
+    top_n = int(input("How many top matches do you want to see? "))
+    search_results = query_chromadb(query, top_n)
+
+    print("Top Matched Documents:")
+    for id, score, text in search_results:
+        print(f"""
+ID:{id} TEXT: {text} SCORE: {round(score, 2)}
+""")    #5
+
+    print("\n")
+###Output
+Enter a search query (or 'exit' to stop): dogs are lazy
+How many top matches do you want to see? 3
+Top Matched Documents:
+ID:id7 TEXT: The dog is lazy but the brown fox is quick! SCORE: 0.24
+ID:id5 TEXT: The brown fox is quick and the blue dog is lazy! SCORE: 0.28
+ID:id2 TEXT: The quick brown fox jumps over the lazy dog. SCORE: 0.29</pre> 
+    <div class="code-annotations-overlay-container"> #1 Generates embeddings for each document and assigns an ID
+     <br/>#2 Creates a Chroma DB client and a collection
+     <br/>#3 Adds document embeddings to the collection
+     <br/>#4 Queries the datastore and returns the top 
+     <em>n</em> relevant documents
+     <br/>#5 The input loop for user input and output of relevant documents/scores
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p109"> 
+   <p>As the earlier scenario demonstrated, you can query the documents using semantic meaning rather than just key terms or phrases. These scenarios should allow you to see how the retrieval pattern works. With this background in place, let’s see how to build practical RAG agents.</p> 
+  </div> 
+  <div class="readable-text" id="p110"> 
+   <h2 class=" readable-text-h2"><span class="num-string">6.3</span> Building practical RAG knowledge agents</h2> 
+  </div> 
+  <div class="readable-text" id="p111"> 
+   <p>Similarity or vector search provides an excellent foundation for building RAG systems. But relying entirely on vector search is not a sufficient basis for a practical RAG system. As we will see in the next section, we often use a combination of search approaches when building RAG and RAG agents.</p> 
+  </div> 
+  <div class="readable-text" id="p112"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.3.1</span> Everything begins with search and relevance</h3> 
+  </div> 
+  <div class="readable-text" id="p113"> 
+   <p>There are numerous approaches to finding information. Vector/similarity search works well because it generally returns documents with the same meaning. Then we feed all documents with similar meanings into an LLM/agent, which sorts out the relevant information. But this approach can create several problems. Table 6.2 highlights several common problems with using only vector/similarity search for context retrieval.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p114"> 
+   <h5 class=" browsable-container-h5">Table 6.2 Understanding semantic/vector search deficiencies</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-5"/> 
+     <col class="_idGenTableRowColumn-6"/> 
+     <col class="_idGenTableRowColumn-7"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-2"> 
+      <td class="No-Table-Style CellOverride-1"> <p class="_TableHead">Problem (use case)</p> </td> 
+      <td class="No-Table-Style CellOverride-2"> <p class="_TableHead">Simple example</p> </td> 
+      <td class="No-Table-Style CellOverride-3"> <p class="_TableHead">Fix (tie-in to retrieval methods)</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-8"> 
+      <td class="No-Table-Style CellOverride-4"> <p class="_TableBody">Misses exact words or numbers</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">“Show bulletin for error code P0420” returns generic exhaust pages but none with “P0420.” </p> </td> 
+      <td class="No-Table-Style CellOverride-6"> <p class="_TableBody">Keyword search (precise token match) or hybrid search (keyword + vector) to ensure the literal code is caught </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Industry jargon/<br/>acronyms get confused.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Query uses “Freon,” but docs say “refrigerant,” so the right HVAC article is skipped. </p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Keyword search with a synonym list, or hybrid search to blend exact terms with semantic meaning </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Many near-­duplicate passages crowd the top.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Twelve copies of the same product sheet push other docs out of the top-<em>k</em>.</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Vector search. Apply MMR or dedup plus a hybrid search step so keyword-unique docs can surface. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Feels related but doesn’t answer</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Ask “When was Model X released?”; top hit is a comparison blog lacking the date.</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Two-stage hybrid search. Vector recall, then a keyword search/relational DB filter or a rerank step for precision. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-3"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Can’t follow relationships</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">“Who reports to Alice’s manager?” needs org-chart data.</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Add a graph search (knowledge graph) or relational DB (SQL) query tool alongside vectors. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Results get stale quickly.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Yesterday’s price change isn’t in the embeddings, so the old price shows up. </p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Keep facts in a relational DB (SQL), and combine live DB lookups with vector search for descriptive text. </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Ambiguous words choose the wrong meaning.</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">“Mouse care guide” surfaces computer-mouse manuals instead of pet care.</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">Keyword search filter on category terms, or hybrid search that boosts exact topical words </p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-4"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody">Can leak restricted content</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Vector similarity exposes confidential HR notes to an unauthorized user.</p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Enforce ACLs on the vector search index and double filter with keyword search or relational DB scoped to the user’s permissions. </p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p115"> 
+   <p>As you can see, a host of problems can arise when we rely entirely on vector search for document context. This means that in any practical RAG application or agent, you will almost always use a combination of search techniques to find information. We can augment vector search with several other techniques. Table 6.3 describes the more common of these techniques, their pros and cons, and typical use cases.</p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p116"> 
+   <h5 class=" browsable-container-h5">Table 6.3 RAG search techniques beyond vector search</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-9"/> 
+     <col class="_idGenTableRowColumn-10"/> 
+     <col class="_idGenTableRowColumn-10"/> 
+     <col class="_idGenTableRowColumn-10"/> 
+    </colgroup> 
+    <thead> 
+     <tr class="No-Table-Style _idGenTableRowColumn-11"> 
+      <th class="No-Table-Style CellOverride-13" scope="col"> <p class="_TableHead">Retrieval method</p> </th> 
+      <th class="No-Table-Style CellOverride-14" scope="col"> <p class="_TableHead">Pros</p> </th> 
+      <th class="No-Table-Style CellOverride-14" scope="col"> <p class="_TableHead">Cons</p> </th> 
+      <th class="No-Table-Style CellOverride-15" scope="col"> <p class="_TableHead">Typical use cases</p> </th> 
+     </tr> 
+    </thead> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-12"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Keyword search</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Precise term matching, high precision</li> 
+        <li class="_TableListBullet">Effective for structured queries and exact phrases</li> 
+        <li class="_TableListBullet">Results are interpretable (you see which keywords hit). </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Misses semantic equivalents (synonyms, rephrasings)</li> 
+        <li class="_TableListBullet">Not useful if query and docs use different vocabulary</li> 
+        <li class="_TableListBullet">Can’t capture context or meaning beyond exact words </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-18"> 
+       <ul> 
+        <li class="_TableListBullet">Enterprise document search when specific jargon or IDs are used </li> 
+        <li class="_TableListBullet">Legal or policy documents where exact wording matters</li> 
+        <li class="_TableListBullet">Database lookups by key (when integrated with SQL) </li> 
+       </ul> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Vector Search</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Finds conceptually relevant text even if wording differs</li> 
+        <li class="_TableListBullet">High recall for unstructured data (can retrieve hidden gems)</li> 
+        <li class="_TableListBullet">Scales to very large corpora with ANN indexes </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Lower precision: may return loosely relevant info (fuzzy matches) </li> 
+        <li class="_TableListBullet">Limited explainability of why a result was retrieved</li> 
+        <li class="_TableListBullet">Needs re-embedding when data changes (maintenance overhead) </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-18"> 
+       <ul> 
+        <li class="_TableListBullet">Customer support KB search (users ask in many ways)</li> 
+        <li class="_TableListBullet">FAQ or document assistant bots where semantic similarity is key </li> 
+        <li class="_TableListBullet">Large knowledge bases (wikis, forums) for broad Q&amp;A </li> 
+       </ul> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Hybrid search</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Combines strengths: lexical precision + semantic recall</li> 
+        <li class="_TableListBullet">Improves relevance by covering both exact matches and related concepts</li> 
+        <li class="_TableListBullet">Can use signals from multiple sources (e.g., text + graph) for richer context </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Higher system complexity (maintain two indices)</li> 
+        <li class="_TableListBullet">Requires tuning of score fusion or ranking strategy</li> 
+        <li class="_TableListBullet">Slightly more latency (multiple searches per query) </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-18"> 
+       <ul> 
+        <li class="_TableListBullet">Enterprise search across heterogeneous data (structured fields + text)</li> 
+        <li class="_TableListBullet">E-commerce search (match product attributes and description meaning) </li> 
+        <li class="_TableListBullet">Any high-stakes QA where you want to avoid misses: retrieve via both methods </li> 
+       </ul> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Relational DB (SQL)</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Precise and up to date for structured facts (no embedding approximation)</li> 
+        <li class="_TableListBullet">Can handle complex filters, joins, and aggregations in data</li> 
+        <li class="_TableListBullet">Uses the existing database (single source of truth) </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Only works for predefined schema queries (no semantic generalization)</li> 
+        <li class="_TableListBullet">Requires translation from natural language to SQL or similar</li> 
+        <li class="_TableListBullet">Not designed for long text or fuzzy matching </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-18"> 
+       <ul> 
+        <li class="_TableListBullet">Factual questions answerable by structured data (e.g., “current stock price”)</li> 
+        <li class="_TableListBullet">Analytics dashboards via NL (LLM translates NL to SQL)</li> 
+        <li class="_TableListBullet">Combining with text answers: fetch a number from DB and explain it with text </li> 
+       </ul> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-15"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Graph (knowledge graph)</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Encodes rich relationships for multihop reasoning</li> 
+        <li class="_TableListBullet">High explainability (can trace the path of reasoning)</li> 
+        <li class="_TableListBullet">Enables inference: can derive new info via graph connections (reason over edges) </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-17"> 
+       <ul> 
+        <li class="_TableListBullet">Hard to build and maintain (needs domain ontology, constant updates)</li> 
+        <li class="_TableListBullet">Scaling to large, dynamic datasets is challenging</li> 
+        <li class="_TableListBullet">Querying graphs can be complex; not suited for free-form text search </li> 
+       </ul> </td> 
+      <td class="No-Table-Style CellOverride-18"> 
+       <ul> 
+        <li class="_TableListBullet">Complex “analytical” questions (e.g., cause–effect, hierarchies: “Who reports to Alice’s manager?”)</li> 
+        <li class="_TableListBullet">Domains like medicine and finance where knowledge is highly interconnected</li> 
+        <li class="_TableListBullet">Personalization and recommendations using a knowledge graph of user interactions </li> 
+       </ul> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p117"> 
+   <p>The important takeaways from tables 6.1 and 6.2 are, first, that you generally will not rely solely on vector search to power RAG. Next, when choosing a supplementary technique, you always want to consider the type of data you use to power RAG and the use cases. Finally, don’t rely entirely on the search mechanism to determine RAG context.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p118"> 
+   <p>Agents add another layer because they can support a mix of tools that combine these patterns into even more complex RAG use cases. This allows an RAG agent to search using one pattern, vector/hybrid search. It can then augment the relevance and context of that search with a tool that performs a relational database search.</p> 
+  </div> 
+  <div class="readable-text" id="p119"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.3.2</span> Building a vector search RAG agent</h3> 
+  </div> 
+  <div class="readable-text" id="p120"> 
+   <p>Perhaps the best way to understand all these terms and methods is to look at how they are applied in code. Let’s start by building a RAG engine powered solely by vector/similarity search. We’ll create a simple agent that loads a movie script, chunks it into sections, and embeds those chunks into semantic vectors. Then we’ll feed those vectors into a vector database (Chroma DB) for later retrieval using a <code>search_script</code> tool. The result is a RAG agent that has knowledge of the particular movie script previously indexed.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p121"> 
+   <p>The detailed process, as you can see in listing 6.6, is to load the movie script into the code. We then break it into semantic chunks by token count, and use the OpenAI embedding model to create vectors. From there, we load the Chroma DB from a local path and check whether the collection exists. If the collection exists and there are no vectors, we populate it; otherwise, we continue to the agent.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p122"> 
+   <p>Next, we provide the agent with a role, instructions, and a final directive to ensure all answers are grounded in the documents it finds. Grounding means constraining the agent’s response to information that appears in the retrieved context, rather than letting the model fall back on its training data. Without explicit grounding instructions, the model will often answer from its internal knowledge, which is what we call hallucination when the answer is wrong and contradicts the retrieved documents.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p123"> 
+   <p>The model is not cheating when it does this. It is doing what it was trained to do, which is produce plausible-sounding output from any available source including its own parameters. The agent designer’s job is to tell the model that the retrieved context is the authoritative source for this task and that the model should defer to it.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p124"> 
+   <p>Several prompt patterns reliably enforce grounding. The strongest is an explicit instruction like “answer only using information from the provided context; if the context does not contain the answer, say so.” Adding a citation requirement (“for each claim, cite the source document and quote”) reinforces grounding because the model has to commit to a retrieved source for every statement. Asking the model to first quote the relevant passages and then answer (“first identify the passages that address the question, then write your answer based only on those passages”) makes the grounding step explicit in the reasoning trace.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p125"> 
+   <p>In the listing, we first ingest the movie script <em>Back to the Future</em> into a semantic vector database. Then, after building the RAG movie script agent, we query two important details from the script: <em>“</em>Where does Doc tell Marty to meet him, and at what time?” and <em>“</em>What happens at 1:15 AM?”.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p126"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.6 02_RAG_agent_vector.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">script_text = Path("chapter_06/sample_documents/back_to_the_future.txt").read_text(
+    encoding="utf-8"
+)
+
+def simple_chunk(text, max_tokens=200):    #1
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+    words, chunk, chunks = text.split(), [], []
+    for w in words:
+        if len(tokenizer.encode(" ".join(chunk + [w]))) &gt; max_tokens:
+            chunks.append(" ".join(chunk))
+            chunk = [w]
+        else:
+            chunk.append(w)
+    if chunk:
+        chunks.append(" ".join(chunk))
+    return chunks
+
+docs = simple_chunk(script_text, max_tokens=200)
+
+client = chromadb.PersistentClient(    #2
+    path="./chapter_06/chroma_script_store"  
+)
+collection_name = "bttf_script"    
+
+try:
+    collection = client.get_collection(collection_name)    #3
+except Exception:     #4
+    collection = client.create_collection(name=collection_name)     #4
+
+if collection.count() == 0:    #4
+    collection.add(ids=[str(uuid.uuid4()) for _ in docs], documents=docs)
+
+@function_tool    #5
+def search_script(query: str, top_k: int = 3) -&gt; str:
+    res = collection.query(query_texts=[query], n_results=top_k)
+    if res and "documents" in res and res["documents"] and res["documents"][0]:
+        return "\n\n".join(res["documents"][0])
+    return "No relevant documents found."
+
+
+agent = Agent(
+    name="Script Agent",
+    instructions=(    #6
+        "You answer questions about the movie *Back to the Future*.\n" #7
+        "When needed, call the `search_script` tool to fetch passages, " #7
+        "then cite or paraphrase them in your answer." #7
+        "Make sure your answers are grounded in the script text.\n"     #7
+    ), #7
+    tools=[search_script],
+)
+
+query = "Where does Doc tell Marty to meet him, and at what time?"
+result = Runner.run_sync(agent, query)
+print("\n--- ANSWER ---\n", result.final_output)
+
+query = "What happens at 1:15AM"    #7
+result = Runner.run_sync(agent, query)
+print("\n--- ANSWER ---\n", result.final_output)
+
+OUTPUT
+--- ANSWER ---
+ Doc tells Marty to meet him at the Twin Pines Mall parking lot at 1:15 AM.
+
+--- ANSWER ---
+ There's no specific event or mention of 1:15 AM in the script passages I retrieved. If you have a particular scene or context in mind, let me know, and I can help further!    #7</pre> 
+    <div class="code-annotations-overlay-container"> #1 Uses a simple chunking strategy to break documents based on number of tokens
+     <br/>#2 Loads the Chroma DB from the file
+     <br/>#3 Tries to load the collection, and if it is not there, creates a new collection
+     <br/>#4 If the collection is empty, we add the documents.
+     <br/>#5 Creates a tool to search the vector database
+     <br/>#6 Provides agent with instructions and grounding so it doesn’t cheat and relies solely on the documents returned with the tool to answer questions
+     <br/>#7 Asks the agent to answer some questions about the script; notices the answer to both questions
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p127"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Grounding</h5> 
+   </div> 
+   <div class="readable-text" id="p128"> 
+    <p>When developing RAG systems and agents, you almost always insist that the model ground its answers in the retrieved content. Grounded answers reference and align with the source documents, knowledge, or memories the agent retrieved, rather than relying on the model’s training data. Without grounding, the agent will often answer from its internal parameters, which may occasionally be correct but more often produce hallucinations that ignore or contradict the retrieved context.</p> 
+   </div> 
+   <div class="readable-text" id="p129"> 
+    <p>Grounding has degrees worth understanding. Weak grounding means the answer is generally consistent with the retrieved content but may include outside information or loosely paraphrase. Strong grounding means every claim in the answer can be traced back to a specific passage in the retrieved context, usually with explicit citations. The right degree of grounding depends on the application. Customer-facing assistants, legal and medical applications, and any system where wrong answers carry consequences need a strong grounding with verifiable citations. Internal research tools, brainstorming assistants, and exploratory agents can usually run with weak grounding, where the retrieved content shapes the answer without strictly bounding it.</p> 
+   </div> 
+   <div class="readable-text" id="p130"> 
+    <p>Grounding is not just a prompt-level concern. It runs through the whole retrieval stack: the quality of the chunks (poorly segmented documents make grounding harder), the relevance of the retrieval (irrelevant chunks force the model to either ignore them or be misled by them), and the evaluation framework (you cannot tell if grounding is working without measuring it). Treating grounding as something you add at the prompt and stop thinking about is one of the most common RAG mistakes. Always pair grounding instructions with a way to verify they are working. Spot-checking outputs against the retrieved context, automated checks that every claim cites a source, and evaluation suites that test for hallucination rate are all common techniques. The grounding instruction alone tells the model what you want; the verification tells you whether the model is actually doing it. </p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p131"> 
+   <p>After running the code, you will notice that the agent can faithfully answer the first question. But because it is prompted to be grounded, it cannot answer the second question. The reason it cannot answer the time question is that vector search is not granular enough to pick up this key term. Instead, we need to combine our agent with hybrid vector and keyword search.</p> 
+  </div> 
+  <div class="readable-text" id="p132"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.3.3</span> Building a hybrid search RAG agent</h3> 
+  </div> 
+  <div class="readable-text" id="p133"> 
+   <p>Many methods and tools provide hybrid search, and most embed the hybrid search mechanism within the tool. A vector search and a keyword search run in tandem when a query arrives, each returning its own ranked list of results. Because keyword and vector search scores are not directly comparable (BM25 scores and cosine similarity scores live on different scales), a fusion function combines the two ranked lists into a single ranked output.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p134"> 
+   <p><em>Reciprocal Rank Fusion</em> (RRF) is the most common fusion function and worth understanding because it is the default in most production hybrid search systems. RRF ignores the raw scores entirely and works only with each result’s rank position in its respective list. The fused score for any document is calculated as the sum of 1/(<em>k</em> + rank) across both lists, where <em>k</em> is a small constant (typically 60). Documents that appear high in both lists end up with the highest fused scores, which is the property hybrid search is designed to exploit.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p135"> 
+   <p>The advantage of RRF is that it does not care how the underlying scores were produced or how they are calibrated. A document ranked first in keyword search and first in vector search will rank first in the fusion regardless of whether keyword search returned scores of 0.95 and 0.92 or vector search returned scores of 23.1 and 22.8. This rank-only approach is what makes RRF robust across different search backends and tunable across different domains. Figure 6.7 demonstrates how this approach works with search tools, providers, and agents.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p136">  
+   <img alt="" src="../Images/CH06_F07_Lanham4.png" style="width: 100%; max-width: max-content;" width="921" height="844"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.7 The top of the figure shows how a user query could be converted to a hybrid search by decomposing the query into keywords and semantic meaning. The bottom of the figure shows how an agent could use the same search mechanism as a set of tools to perform a semantic (vector) and keyword query.</span> </h5>
+  </div> 
+  <div class="readable-text" id="p137"> 
+   <p>At the top of the figure, we see a query passed to a hybrid search tool that uses vector and keyword methods. After the search is performed, the search service internally reranks the documents using a merged scoring mechanism called <em>Reciprocal Rank Fusion</em> (RRF). The results with the new score are then returned.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p138"> 
+   <p>When using agents, we can alter how we apply hybrid search by allowing the agent to decide when and how to use a vector search function and a keyword search function. After the documents are returned from both functions, the agent determines their relevance and answers the query appropriately, given the context.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p139"> 
+   <p>Listing 6.7 shows the updated agent for implementing a hybrid RAG agent with access to keyword and vector search tools. The listing shows only the agent code and the tools it uses because the tool implementations aren’t important. Instead, pay particular attention to the instructions provided to the agent and the addition of references for each answer.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p140"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.7 02_RAG_agent_hybrid.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">agent = Agent(
+    name="Script Agent",
+    instructions="""
+## ROLE
+You answer questions about the movie *Back to the Future*.
+You have access to two search tools:    #1
+1. `search_script_with_vector_similarity` - Use for
+   semantic/conceptual searches
+2. `search_script_with_keyword` - Use for exact
+   word/phrase searches
+Use both tools when appropriate to get comprehensive
+results.    #1
+
+## GROUNDING RULES
+IMPORTANT: You must always provide exact references
+from the script.    #2
+- Quote relevant passages directly from the search
+  Results    #2
+- Use the [Reference X] markers to cite specific
+  passages
+- Do not make up information that isn't in the script
+- If the script doesn't contain the requested
+  information, say so clearly
+- Always ground your answers in the actual script text
+  provided by the search tools
+
+## ANSWER FORMAT
+Format your answers like this:    #3
+Based on the script:
+[Quote from Reference 1]: "exact text from script"
+[Quote from Reference 2]: "exact text from script"
+
+Your interpretation: [your analysis based on the
+quotes]
+""",
+    tools=[search_script_with_vector_similarity, search_script_with_keyword],  #4
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Explains to the agent how to use the search tools
+     <br/>#2 Enforces the agent providing references for each answer
+     <br/>#3 Formatting the answer output, alternatively we could have used a strongly typed object to achieve the same results.
+     <br/>#4 Adds the modified search tools to the agent
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text intended-text" id="p141"> 
+   <p>Now, on top of grounding the answer, we also insist that the agent provide references for each answer it gives. This additional restriction enforces diligence in aligning the answer with the knowledge context. Finally, we can see that the agent has the agency to determine which documents are relevant to answer and cite.</p> 
+  </div> 
+  <div class="readable-text" id="p142"> 
+   <p>We now have an agent that can find information relevant to answering a question while ensuring that only the document is used for the answer. Run the code, and you may start to wonder why some answers differ from your memory of the movie <em>Back to the Future</em>. This is because the script is the original first version and differs substantially from the produced movie. But it does give us a way to test RAG agent knowledge retrieval and be confident that the answers the agent provides are faithful to the document knowledge.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p143"> 
+   <p>We could extend this hybrid example to support other search methods on the data or on complementary data, such as a relational or graph database. Before MCP, building these hybrid search tools added complexity to the process of building an agent. With MCP, we can easily add memory and knowledge to agents.</p> 
+  </div> 
+  <div class="readable-text" id="p144"> 
+   <h2 class=" readable-text-h2"><span class="num-string">6.4</span> Adding memory to agents with MCP</h2> 
+  </div> 
+  <div class="readable-text" id="p145"> 
+   <p>RAG for knowledge or memory is a powerful concept that lets agents extend beyond their fixed model. But as we have seen, implementing these systems effectively can be complex if you need anything beyond simple use cases. This is where MCP really shines, because it can provide numerous out-of-the-box tools to power agent knowledge and memory. Before we get to that, we want to understand what memory actually is in this context.</p> 
+  </div> 
+  <div class="readable-text" id="p146"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.4.1</span> Understanding memory form and agent function</h3> 
+  </div> 
+  <div class="readable-text" id="p147"> 
+   <p>Memory in agents borrows vocabulary from human cognitive memory because the categories (short-term, long-term, episodic, semantic) are useful for organizing different storage and retrieval patterns. The vocabulary is a tool, not a model. Agent memory is built from databases, vector stores, and context windows, none of which behave like biological memory.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p148"> 
+   <p>What agents need is straightforward. They need to store information across sessions, retrieve relevant pieces as needed, and integrate them into the current prompt. The rest of this section covers those mechanics, using cognitive terms as shorthand where useful and dropping them where they get in the way.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p149"> 
+   <p>Agent memory is better understood through the architectural pieces that implement it rather than through cognitive categories. The pieces are the context window (what fits into the current prompt), external storage (databases, vector stores, files that persist across sessions), state management (scratchpads, working notes, plan trackers that the agent reads and writes during a task), and retrieval mechanisms (the queries and lookups that move content from external storage into the context window).</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p150"> 
+   <p>These pieces map loosely onto cognitive categories but do not require them. Context window content is sometimes called short-term memory, and external storage is sometimes called long-term memory, but the labels obscure the real distinction: what is bounded by the per-call context limit versus what lives outside it. “Sensory memory” is not a separate category in any meaningful sense; what the cognitive analogy calls sensory memory is just retrieval against an image, audio, or other modality-specific index, using the same mechanics as text retrieval. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p151"> 
+   <p>The rest of this section uses architecture-level names to describe what each memory mechanism does and reaches for cognitive terms only where they are genuinely useful as shorthand.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p152"> 
+   <p><em>Sensory memory</em> in AI is a way of describing multimodal retrieval: the same retrieval mechanics applied to images, audio, and other modalities beyond text. The agent can retrieve a similar image from a vector-indexed store of past images, or pull relevant audio from a sound database, using the same embed-and-search pattern as text retrieval. Retrieving a stored image that resembles a current one is the canonical case.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p153"> 
+   <p>This is an emerging direction rather than a fully mature technique. Multimodal embedding models exist (CLIP, OpenCLIP, and vendor offerings from OpenAI, Cohere, and Google), but retrieval quality, cross-modal alignment, and tooling are less mature than for text retrieval. Production multimodal RAG systems are real but uncommon, and the patterns are still being worked out.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p154"> 
+   <p>Treat sensory memory as a useful capability when text alone is not enough, but not as a drop-in replacement for the well-understood text retrieval covered earlier in the chapter. The mechanics are the same (embed, index, search, retrieve); the maturity and reliability are not.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p155"> 
+   <p><em>Short-term/working memory </em>in AI acts as an active memory buffer for conversation history. It holds a limited amount of recent input and context for immediate analysis and response generation. In agents and agent applications, short-term working memory is the workspace the agent or agents use. This could be something as simple as the conversation thread or a more complex blackboard workspace.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p156"> 
+   <p><em>Long-term memory </em>in AI is storage relevant to the agent’s or user’s life. Semantic memory provides a robust capacity to store and retrieve global and local facts and concepts. This form of memory may extend beyond semantics to include search mechanisms such as keyword, relational, and graph databases.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p157"> 
+   <p>You can see the memory types broken down in more detail in figure 6.8.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p158">  
+   <img alt="" src="../Images/CH06_F08_Lanham4.png" style="width: 100%; max-width: max-content;" width="841" height="435"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.8 Memory is broken down into various forms, from sensory (visual, auditory, and touch) to short-term conversational memory and long-term episodic, semantic, and implicit/procedural memories</span></h5>
+  </div> 
+  <div class="readable-text" id="p159"> 
+   <p>While memory may use the same retrieval and augmentation mechanisms as knowledge, it typically differs significantly when memories are updated or appended. Figure 6.9 demonstrates the process of capturing and using semantic memories to augment prompts. Because memories often differ from complete documents in form and size, we may avoid using splitting or chunking mechanisms. But for more complex cases, episodic, semantic, and procedural memories may be broken into chunks by events or other boundaries.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p160">  
+   <img alt="" src="../Images/CH06_F09_Lanham4.png" style="width: 100%; max-width: max-content;" width="885" height="766"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.9 Basic semantic memory retrieval and augmentation workflow. At the top of the figure, memories are stored as semantic encodings in a vector database. At the bottom of the figure, we can see the basic RAG process for retrieving and augmenting agent context.</span></h5>
+  </div> 
+  <div class="readable-text intended-text" id="p161"> 
+   <p>The figure shows a semantic memory process, but the same principles apply to other storage and retrieval forms we may use. Also, much like the knowledge search patterns we looked at earlier, the form and types of memory we use depend on what we want to remember.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p162"> 
+   <p>A keyword- or relational database–backed memory may be more appropriate if we want to remember facts and statistics. But if we want to remember important relationships in social networks, or facts and relationships about a person, we may instead want to use a graph database.</p> 
+  </div> 
+  <div class="readable-text" id="p163"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.4.2</span> Attaching a graph database for memory using MCP</h3> 
+  </div> 
+  <div class="readable-text" id="p164"> 
+   <p>Graph databases and Graph RAG are excellent patterns for helping the agent understand relationships between entities, types of entities, and observations about them. The flexibility of this knowledge and memory store allows the agent to query based on entities, entity types, and observations about those entities. As shown in figure 6.10, this forms the original <em>Back to the Future</em> script’s basic graph (memory graph or knowledge graph).</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p165">  
+   <img alt="" src="../Images/CH06_F10_Lanham4.png" style="width: 100%; max-width: max-content;" width="898" height="1054"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.10 Graph diagram examples from the </span><span class=""><em>Back to the Future</em></span><span class=""> script. The top of the figure explains the relationship between entities/nodes. Below, we see a simple node relationship graph among the various entities from the movie, where types of entities such as people are grouped together, and locations are grouped separately.</span> </h5>
+  </div> 
+  <div class="readable-text" id="p166"> 
+   <p>Now the entities and relationships in the figure are more representative of the knowledge graph that represents the <em>Back to the Future</em> script. But the entities, relationships, and observations could equally describe long-term memories of conversations or agent activity. In earlier chapters, we used the Sequential Thinking server as a memory scratchpad for reasoning, but there is no reason we couldn’t also use graph memory.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p167"> 
+   <p>Listing 6.8 shows the basic implementation of an agent that can use long-term memory. Run the code, and you can chat with the agent, ask it to remember things, describe relationships, and make observations about entities. To prepopulate the memory with the <em>Back to the Future</em> script, run the 03_create_memories_mcp.py file to create graph memories (knowledge) you can explore.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p168"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.8 03_mcp_memory_manage_agent.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">async def main():
+    memory_srv = MCPServerStdio(    #1
+        name="memory",
+        params={
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-memory@latest"],
+        },
+    )
+
+    instructions = """
+You are a Memory Management Agent whose primary purpose is
+to remember and track facts, details, 
+and relationships about users and their interactions.
+
+# refer to code listing for more information
+
+Remember: Your value comes from remembering details
+others might forget and maintaining rich relationship maps.
+    """
+
+    async with memory_srv:
+        agent = Agent(
+            name="Memory Agent",
+            instructions=instructions,
+            mcp_servers=[memory_srv],    #2
+        )
+
+        while True:    #3
+            try:
+                user_input = input(
+                  "Memory assistant: (or type 'exit' to quit): ")
+                if user_input.strip().lower() in ("exit", "quit"):
+                    break
+                response = await Runner.run(agent, user_input)
+                print(response.final_output)
+            except (EOFError, KeyboardInterrupt):
+                print("\nExiting.")
+                break</pre> 
+    <div class="code-annotations-overlay-container"> #1 We are using the MCP reference memory (graph) server.
+     <br/>#2 Provides the memory server to the agent as an MCP set of tools
+     <br/>#3 Conversation loop to talk to the agent
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p169"> 
+   <p>When running this code, you can converse with the agent, and it will remember various facts, relationships, and observations. The memory MCP server exposes a small set of tools (typically <code>add_observation</code>, <code>add_relationship</code>, <code>query_facts</code>, and similar) that the agent calls when something is worth remembering or worth looking up. The agent decides what to store and when to retrieve based on the conversation and its system prompt.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p170"> 
+   <p>Underneath, the server stores observations in a graph database where nodes represent entities (people, places, concepts), and edges represent relationships between them. Adding “Micheal lives in Calgary” creates two nodes (Micheal, Calgary) and an edge labeled “lives_in” between them. Retrieving facts about Micheal traverses the graph from the Micheal node along its outgoing edges, which is efficient because the database is optimized for relationship traversal rather than row-by-row scanning.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p171"> 
+   <p>Using a graph database makes some queries fast (find everything connected to this entity) but has limitations. It struggles with fuzzy matching (“does Micheal live somewhere cold” requires inference beyond the literal “lives_in” edge), it requires the agent to extract structured facts cleanly (which the LLM does imperfectly), and it scales differently than vector stores when relationships become numerous and densely connected.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p172"> 
+   <p>For example, if we started talking about Doc as an entity and discussed various observations, the agent would create an entity called Doc and add observations about it. But the next time we talked to the agent, if we mentioned Doc Brown, the agent might rightly assume this was a new entity.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p173"> 
+   <p>The fix for this is to create a hybrid memory solution that stores and queries information using multiple forms of search and retrieval. For instance, you could use a hybrid memory agent that uses both graph and semantic memory.</p> 
+  </div> 
+  <div class="readable-text" id="p174"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.4.3</span> Creating hybrid memory systems with MCP</h3> 
+  </div> 
+  <div class="readable-text" id="p175"> 
+   <p>For the following example, we will use MCP servers for graph and semantic memory. That means all the work needed to get the agent to use both memory types is in the agent instructions. The next listing shows the instructions we provide to the hybrid memory agent to use both graph and semantic stores for memory.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p176"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 6.9 04_hybrid_memory_agent.py (agent instructions only)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">You are a Hybrid Memory Management Agent that combines semantic memory (ChromaDB vector store) 
+with graph-based memory (knowledge graph) to provide comprehensive memory capabilities.
+
+CRITICAL: You MUST start EVERY conversation by saying "Remembering..."
+and then execute the hybrid memory retrieval workflow.
+
+HYBRID MEMORY SYSTEM:
+1. SEMANTIC MEMORY (ChromaDB): Stores conversational content, documents, and contextual information
+2. GRAPH MEMORY (Knowledge Graph): Stores structured facts, relationships, entities, and observations
+
+MANDATORY HYBRID WORKFLOW FOR EVERY INTERACTION:
+   Remembering -&gt; Semantic Search -&gt; Graph Search -&gt; Hybrid synthesis -&gt; Memory capture -&gt; Monitor -&gt; Response
+
+1. ALWAYS START WITH: "Remembering..."
+
+2. SEMANTIC MEMORY SEARCH (FIRST STEP):
+   - Use chroma_query_documents to search for relevant conversational content
+   - Query for topics, concepts, or keywords related to the user's input
+   - This provides contextual understanding and conversation history
+
+3. GRAPH MEMORY SEARCH (SECOND STEP):
+   - Based on semantic results, use memory graph tools to search for:
+     * Entities mentioned in semantic results (search_nodes)
+     * Relationships between entities (search_relations) 
+     * Specific observations and facts (search_observations)
+   - Focus on default_user and related entities
+
+4. HYBRID RESPONSE SYNTHESIS:
+   - Combine semantic context with structured graph knowledge
+   - Reference both conversational context AND structured facts
+   - Provide rich, contextual responses using both memory types
+
+5. INFORMATION CAPTURE &amp; STORAGE:
+   When new information is discovered, store in BOTH systems:
+
+   a) SEMANTIC STORAGE (ChromaDB):
+      - Store full conversational content and context
+      - Include rich descriptions and natural language
+      - Use chroma_add_documents for new conversations
+
+   b) GRAPH STORAGE (Knowledge Graph):
+      - Create entities for people, organizations, events, concepts
+      - Establish relationships between entities (create_relations)
+      - Store specific facts as observations (create_observations)
+      - Connect to existing knowledge structure
+
+6. ACTIVE MONITORING for these information types:
+   a) Personal Details: age, gender, location, job, education, interests
+   b) Behavioral Patterns: habits, preferences, communication style  
+   c) Goals &amp; Aspirations: objectives, targets, dreams, plans
+   d) Relationships: family, friends, colleagues, professional connections
+   e) Experiences: events, activities, significant moments
+   f) Opinions &amp; Preferences: likes, dislikes, viewpoints, choices
+
+7. RESPONSE STYLE:
+   - Always reference BOTH semantic context AND graph facts
+   - Example: "From our previous conversations (semantic), I remember you mentioned X, 
+     and I also have recorded (graph) that you work at Y and know Z"
+   - Demonstrate continuity across both memory systems
+   - Ask follow-up questions to enrich both memory types
+
+WORKFLOW PRIORITY:
+Semantic Search → Graph Search → Hybrid Response → Dual Storage
+
+Remember: Your unique value is combining conversational context 
+with structured knowledge for comprehensive memory management.</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p177"> 
+   <p>Aside from adding the Chroma MCP server, this uses the code in listing 6.8. Just like the previous hybrid knowledge agent, everything the agent needs to do is prompted in the instructions. All we need to do is make sure the agent uses both forms of memory in a structured way.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p178"> 
+   <p>This means that, unlike the hybrid knowledge agent, which decided which type of search to perform (semantic or keyword), the memory agent uses both for all interactions. The following is the basic flow the hybrid memory agent follows when searching its memory:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p179">User enters a statement or query.</li> 
+   <li class="readable-text" id="p180">The agent searches the semantic store for documents that match the same meaning.</li> 
+   <li class="readable-text" id="p181">Agent interprets entities and observations from the returned semantic documents.</li> 
+   <li class="readable-text" id="p182">The agent searches the graph memory for entities and observations found in semantic documents.</li> 
+   <li class="readable-text" id="p183">Agent updates semantic and graph memory based on user statements or queries.</li> 
+   <li class="readable-text" id="p184">Based on these retrieved semantic/graph memories, the agent responds.</li> 
+  </ol> 
+  <div class="readable-text" id="p185"> 
+   <p>Combining these search and retrieval patterns makes the agent’s memory more useful for finding relevant information. Extending it further with keyword search, relational databases, or other backends depends on use case.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p186"> 
+   <p>A few honest notes before moving on. The memory examples in this chapter run in-memory or in local stores that disappear when the process stops, so they are useful for learning the patterns but ephemeral. The MCP server is a thin wrapper; the real work is in the storage backend, the extraction logic that decides what to remember, and the retrieval logic that decides what to surface.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p187"> 
+   <p>Production memory needs more than the examples show: persistent storage, access control, observability, eviction policies for stale facts, and evaluation for retrieval quality. The patterns here are the foundation; the operational work is its own project.</p> 
+  </div> 
+  <div class="readable-text" id="p188"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.4.4</span> Semantic augmented memory and applications to semantic, episodic, and procedural memory</h3> 
+  </div> 
+  <div class="readable-text" id="p189"> 
+   <p>Psychologists categorize memory into multiple forms, depending on what information is remembered. Semantic, episodic, and procedural memory all represent different types of information. <em>Episodic</em> memories are about events, <em>procedural</em> memories are about processes or steps, and <em>semantic</em> memories represent meaning and can include feelings or emotions.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p190"> 
+   <p>Episodic and procedural memories fit well within the relational database search/retrieval pattern, where you can record events (episodic) and steps or processes (procedural). But, like other hybrid forms, you may also want to record these memories in semantic/vector storage for more general retrieval. Essentially, what we do with these types of memories is augment them with additional semantic meaning. Figure 6.11 shows the semantic memory augmentation process that could be applied to episodic and procedural memories.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p191">  
+   <img alt="" src="../Images/CH06_F11_Lanham4.png" style="width: 100%; max-width: max-content;" width="880" height="640"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.11 Semantic memory augmentation works by feeding previous experiences into an LLM. The LLM then converts each experience into an augmented memory consisting of questions a user may ask to activate that memory in a future retrieval step.</span></h5>
+  </div> 
+  <div class="readable-text" id="p192"> 
+   <p>Memory augmentation generates additional questions relating to the query or statement, event, or procedural step. Essentially, we want to link these memories to the questions or statements a user may use to find them. You can think of this as reverse engineering the meaning and projecting what questions a user may ask to retrieve these memories.</p> 
+  </div> 
+  <div class="readable-text" id="p193"> 
+   <h3 class=" readable-text-h3"><span class="num-string">6.4.5</span> Uncluttering memory with compression and forgetting</h3> 
+  </div> 
+  <div class="readable-text" id="p194"> 
+   <p>Much like our minds, memory stores can become cluttered with redundant information and unrelated details over time. Internally, our minds deal with memory clutter by compressing or summarizing memories. Our minds remember more significant details over less important ones and memories accessed more frequently.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p195"> 
+   <p>We can apply similar principles of memory compression to agent memory and other retrieval systems to extract significant details. The principle of compression is identical to semantic augmentation, but it adds another layer. That layer collects memories into sets and then summarizes each set into a single memory. This pattern works best with semantic memory, but there is no reason it could not be applied to graph knowledge, keywords, or relational databases.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p196"> 
+   <p>Figure 6.12 shows the process of memory/knowledge compression. Memories or knowledge are first clustered using an algorithm such as k-means. Then, the groups of memories are passed through a compression function, which summarizes and collects the items into more succinct representations.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p197">  
+   <img alt="" src="../Images/CH06_F12_Lanham4.png" style="width: 100%; max-width: max-content;" width="878" height="358"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 6.12 Memory and knowledge compression works by semantically clustering similar memories and knowledge into groups. It then summarizes these groups into a single new memory for each group. Each group memory is then entered into an updated vector database.</span></h5>
+  </div> 
+  <div class="readable-text" id="p198"> 
+   <p>Compressing memories and even knowledge is generally recommended if the number of items in a cluster is large or unbalanced. Each use case for compression may vary depending on how the memories are used in the application. Generally, though, if an inspection of the items in a store reveals repetitive or duplicate information, it’s a good time for compression. The following is a summary of use cases for applications that would benefit from compression.</p> 
+  </div> 
+  <div class="readable-text" id="p199"> 
+   <h4 class=" readable-text-h4">The case for knowledge compression</h4> 
+  </div> 
+  <div class="readable-text" id="p200"> 
+   <p>Knowledge retrieval and augmentation have also been shown to benefit significantly from compression. Results will vary by use case, but generally, the more verbose the source of knowledge, the more it will benefit from compression. Documents that feature literary prose, such as stories and novels, will benefit more than, say, a codebase. But if the code is likewise very repetitive, compression could also prove beneficial. </p> 
+  </div> 
+  <div class="readable-text" id="p201"> 
+   <h4 class=" readable-text-h4">The case for how often you apply compression</h4> 
+  </div> 
+  <div class="readable-text" id="p202"> 
+   <p>Memory often benefits from periodic compression, whereas knowledge stores typically help only on the first load. How frequently you apply compression depends greatly on memory use, frequency, and quantity.</p> 
+  </div> 
+  <div class="readable-text" id="p203"> 
+   <h4 class=" readable-text-h4">The case for applying compression more than once</h4> 
+  </div> 
+  <div class="readable-text" id="p204"> 
+   <p>Multiple simultaneous passes of compression have been shown to improve retrieval performance. Other patterns have also suggested using memory or knowledge at various compression levels. For example, a knowledge store is compressed twice, resulting in three different levels of expertise.</p> 
+  </div> 
+  <div class="readable-text" id="p205"> 
+   <h4 class=" readable-text-h4">The case for blending knowledge and memory compression</h4> 
+  </div> 
+  <div class="readable-text" id="p206"> 
+   <p>If a system is specialized to a particular source of knowledge and employs memories, there may be opportunities to further optimize and consolidate stores. Another approach is to populate memory directly with a document’s starting knowledge.</p> 
+  </div> 
+  <div class="readable-text" id="p207"> 
+   <h4 class=" readable-text-h4">The case for multiple memory or knowledge stores</h4> 
+  </div> 
+  <div class="readable-text" id="p208"> 
+   <p>In more advanced systems, we’ll examine agents that employ multiple memory and knowledge stores relevant to their workflow. For example, an agent could employ individual memory stores in its conversations with individual users. It could also include the ability to share different groups of memories with different groups of individuals. Memory and knowledge retrieval are cornerstones of agentic systems, and we can now summarize what we covered and review some learning exercises in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p209"> 
+   <h4 class=" readable-text-h4">The case for forgetting</h4> 
+  </div> 
+  <div class="readable-text" id="p210"> 
+   <p>Combining these search and retrieval patterns makes the agent’s memory more useful for finding relevant information. Extending it further with keyword search, relational databases, or other backends depends on use case. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p211"> 
+   <p>Production memory needs more than the examples show: persistent storage, access control, observability, eviction policies for stale facts, and evaluation for retrieval quality. In regulated industries like healthcare, finance, and law, eviction is also a compliance question, since data retention requirements can make aggressive pruning legally problematic, and over-eager forgetting can create as much risk as never forgetting. The patterns here are the foundation; the operational work is its own project.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p212"> 
+   <p>Whether you apply memory compression or forgetting depends on your use case and the information you need your agent to remember. If an agent’s memory is filled with repetitive memories, forgetting can be beneficial. Compression is better suited when you have numerous similar memories with minor differences.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p213"> 
+   <p>As you may realize by now, giving your agents knowledge and memory provides powerful capabilities. But these tools are complex and may require integration with other patterns for the best results.</p> 
+  </div> 
+  <div class="readable-text" id="p214"> 
+   <h2 class=" readable-text-h2"><span class="num-string">6.5</span> Exercises</h2> 
+  </div> 
+  <div class="readable-text" id="p215"> 
+   <p>Use the following exercises to improve your knowledge of the material:</p> 
+  </div> 
+  <div class="readable-text" id="p216"> 
+   <p><strong>Exercise 1: Explore TF-IDF similarity.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p217"> 
+   <p><em>Objectiv</em><em>e</em>:<em> </em>Run the baseline TF-IDF demo, and observe cosine-similarity patterns.</p> 
+  </div> 
+  <div class="readable-text" id="p218"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p219">Open document_vector_similarity.py from the listings folder. </li> 
+   <li class="readable-text" id="p220">Save a copy as exercise1_tfidf_demo.py.</li> 
+   <li class="readable-text" id="p221">Run the script, enter “blue” when prompted, and choose three matches.</li> 
+   <li class="readable-text" id="p222">Note which three sentences appear, and record their similarity scores.</li> 
+   <li class="readable-text" id="p223">Repeat with the query “breakfast,” and capture the new results.</li> 
+  </ol> 
+  <div class="readable-text" id="p224"> 
+   <p><em>Expected duration</em>: 8 min</p> 
+  </div> 
+  <div class="readable-text" id="p225"> 
+   <p><strong>Exercise 2</strong><span class="CharOverride-8">: </span><strong>Swap in OpenAI embeddings.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p226"> 
+   <p><em>Objectiv</em><em>e</em>:<em> </em>Convert the similarity demo to use semantic embeddings instead of TF-IDF.</p> 
+  </div> 
+  <div class="readable-text" id="p227"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p228">Duplicate the previous file as exercise2_embeddings_demo.py. </li> 
+   <li class="readable-text" id="p229">Replace the <code>TfidfVectorizer</code> block with the <code>get_embedding</code> helper from listing 6.4.</li> 
+   <li class="readable-text" id="p230">Remove the plotting section, and print the raw cosine-similarity matrix.</li> 
+   <li class="readable-text" id="p231">Run the script twice (queries “blue” and “breakfast”), and compare rankings to exercise 1.</li> 
+   <li class="readable-text" id="p232">Add a brief comment at the end explaining one sentence that moved up or down and why.</li> 
+  </ol> 
+  <div class="readable-text" id="p233"> 
+   <p><em>Expected duration</em>: 12 min</p> 
+  </div> 
+  <div class="readable-text" id="p234"> 
+   <p><strong>Exercise 3</strong><span class="CharOverride-8">: </span><strong>Persist vectors in Chroma DB.</strong> </p> 
+  </div> 
+  <div class="readable-text" id="p235"> 
+   <p><em>Objectiv</em><em>e</em>: Store embeddings in a local Chroma DB collection, and perform similarity search.</p> 
+  </div> 
+  <div class="readable-text" id="p236"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p237">Copy document_query_chromadb.py to exercise3_chroma_store.py. </li> 
+   <li class="readable-text" id="p238">Change the collection name to <code>exercise_docs</code>, and ensure <code>collection.add()</code> is called only if it is empty.</li> 
+   <li class="readable-text" id="p239"><em>Run the script. At the prompt enter “lazy dog,” and request three matches.</em></li> 
+   <li class="readable-text" id="p240">Verify that IDs, distances (&lt; 0.5), and texts print correctly.</li> 
+   <li class="readable-text" id="p241">Restart the script to confirm the collection loads from disk without re-adding vectors.</li> 
+  </ol> 
+  <div class="readable-text" id="p242"> 
+   <p><em>Expected duration</em>: 10 min</p> 
+  </div> 
+  <div class="readable-text" id="p243"> 
+   <p><strong>Exercise 4: Build a vector-only RAG agent.</strong><strong></strong></p> 
+  </div> 
+  <div class="readable-text" id="p244"> 
+   <p><em>Objectiv</em><em>e</em>:<em> </em>Create an agent that answers “Back to the Future” questions using vector search only.</p> 
+  </div> 
+  <div class="readable-text" id="p245"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p246">Open 02_RAG_agent_vector.py, and save as exercise4_vector_rag_agent.py.</li> 
+   <li class="readable-text" id="p247">Change <code>max_tokens</code> in <code>simple_chunk</code> to 150 to create smaller chunks. Rerun the embedding step if needed.</li> 
+   <li class="readable-text" id="p248"><em> </em>Ask the agent “Who is Pine City’s mayor in the script?” and copy the answer.</li> 
+   <li class="readable-text" id="p249">Ask “What happens at 10:04 PM?” and observe whether the agent can find the scene.</li> 
+   <li class="readable-text" id="p250">In a comment, explain one limitation you notice with vector-only retrieval.</li> 
+  </ol> 
+  <div class="readable-text" id="p251"> 
+   <p><em>Expected duration</em>: 14 min</p> 
+  </div> 
+  <div class="readable-text" id="p252"> 
+   <p><strong>Exercise 5: Implement and trace a hybrid RAG agent.</strong><strong></strong></p> 
+  </div> 
+  <div class="readable-text" id="p253"> 
+   <p><em>Objectiv</em><em>e</em>:<em> </em>Combine keyword and vector tools, enforce grounding, and inspect the decision path.</p> 
+  </div> 
+  <div class="readable-text" id="p254"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p255">Duplicate 02_RAG_agent_hybrid.py to exercise5_hybrid_rag_agent.py.</li> 
+   <li class="readable-text" id="p256">Inside the prompt, add a requirement to cite at least two distinct references for every answer.</li> 
+   <li class="readable-text" id="p257">Wrap the main <code>Runner.run_sync</code> call with <code>trace(</code><code>"</code><code>Chapter 6 Hybrid RAG Demo</code><code>"</code><code>):</code>... </li> 
+   <li class="readable-text" id="p258">Pose the query “At what exact time does the lightning strike the clock tower?” and record the output.</li> 
+   <li class="readable-text" id="p259">Open OpenAI &gt; Dashboard &gt; Traces, and confirm you see both <code>search_script_with_keyword</code> and <code>search_script_with_vector_similarity</code> calls followed by the grounded answer.</li> 
+  </ol> 
+  <div class="readable-text" id="p260"> 
+   <p><em>Expected duration</em>: 15 min</p> 
+  </div> 
+  <div class="readable-text" id="p261"> 
+   <h2 class=" readable-text-h2">Summary</h2> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p262">Retrieval is the bridge between raw data and an agent’s reasoning: RAG pipelines turn external text (or other modalities) into prompt-ready context. This enables agents to answer questions with up-to-date, task-specific knowledge.</li> 
+   <li class="readable-text" id="p263">Vector similarity search is the semantic workhorse, but by itself, it misses exact matches, jargon, numbers, and fresh updates. Plan to combine it with keyword, relational, or graph queries for reliable coverage.</li> 
+   <li class="readable-text" id="p264">Vector databases (e.g., Chroma DB, Pinecone) store high-dimensional embeddings and let agents run similarity lookups in milliseconds. They are essential infrastructure for any production RAG or memory system.</li> 
+   <li class="readable-text" id="p265">Hybrid search (vector plus keyword) offers the best of both worlds: lexical precision and semantic recall. Reciprocal-rank fusion or agent-directed tool chaining merges the two result sets into a single, ranked context.</li> 
+   <li class="readable-text" id="p266">Typed tool interfaces (via the OpenAI Agents SDK or MCP) let agents decide when to call semantic, keyword, SQL, or graph tools, giving them true agency while keeping each search cost-controlled and observable.</li> 
+   <li class="readable-text" id="p267">Memory and knowledge are siblings, not twins: “knowledge” is usually static document context, while “memory” evolves from conversations and agent actions. Both ride on the same retrieval primitives.</li> 
+   <li class="readable-text" id="p268">Cognitive analogues map cleanly to implementation layers: sensory memory ≈ short-lived embeddings, working memory ≈ conversation buffer or blackboard, long-term memory ≈ vector/graph/SQL stores.</li> 
+   <li class="readable-text" id="p269">Graph memory adds relational reasoning through entities, edges, and observations, so an agent can answer multihop questions (“Who reports to Alice’s manager?”) that pure embeddings cannot resolve.</li> 
+   <li class="readable-text" id="p270">Compression and forgetting keep stores lean: cluster similar chunks and summarize them, or prune stale items, to control token costs and prevent retrieval noise as memories grow.</li> 
+   <li class="readable-text" id="p271">Grounding is nonnegotiable; always require agents to cite retrieved passages. It prevents hallucinations and pins answers to verifiable sources.</li> 
+   <li class="readable-text" id="p272">In practice, production-grade knowledge/memory agents mix multiple retrieval modes, strongly type their tool calls, trace every interaction, and apply periodic compression. This yields context-aware systems that stay accurate, efficient, and scalable over time.</li> 
+  </ul>
+ </div></div></body></html>

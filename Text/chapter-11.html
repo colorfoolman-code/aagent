@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-numbering"><span class="num-string">11</span> </span><span class="chapter-title-text">Tips for building agentic systems</span></h1> 
+  </div> 
+  <div class="introduction-summary"> 
+   <h3 class="introduction-header"><span class="CharOverride-1">This chapter covers</span><span class="CharOverride-1"></span></h3> 
+   <ul> 
+    <li class="readable-text" id="p2"><span class="CharOverride-2">Field-tested tips organized by the five agentic layers</span></li> 
+    <li class="readable-text" id="p3"><span class="CharOverride-2">Role-specific guidance for a customer support agent</span></li> 
+    <li class="readable-text" id="p4"><span class="CharOverride-2">Design patterns for a RAG agent system</span></li> 
+    <li class="readable-text" id="p5"><span class="CharOverride-2">A blueprint for a deep research agent</span></li> 
+   </ul> 
+  </div> 
+  <div class="readable-text" id="p6"> 
+   <p>As we near the end of our journey into agent development, we can move beyond theoretical and tutorial sessions to introduce more practical tips. These tips and experiences come from building production-level agents and agentic systems in the trenches. They can help you level up your agent development skills and see how real-world agents operate. By the end of this chapter, you should have a set of practical patterns and checklists you can apply when designing real-world agents and agentic systems.</p> 
+  </div> 
+  <div class="readable-text" id="p7"> 
+   <h2 class=" readable-text-h2"><span class="num-string">11.1</span> Field-tested tips organized by the five agentic layers</h2> 
+  </div> 
+  <div class="readable-text" id="p8"> 
+   <p>Throughout this book, we have explored agents using the five functional layers of agents: persona, tools and actions, reasoning and planning, knowledge and memory, and evaluation and feedback. Figure 11.1 reminds us of what happens at each layer.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p9">  
+   <img alt="" src="../Images/CH11_F01_Lanham4.png" style="width: 100%; max-width: max-content;" width="868" height="843"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 11.1 The five agent layers. For each layer, the internal boxes represent the patterns that can help improve development of that layer.</span></h5>
+  </div> 
+  <div class="readable-text" id="p10"> 
+   <p>Let’s go back through these layers now, looking at practical tips for each one.</p> 
+  </div> 
+  <div class="readable-text" id="p11"> 
+   <h3 class=" readable-text-h3"><span class="num-string">11.1.1</span> The core layer: Persona</h3> 
+  </div> 
+  <div class="readable-text" id="p12"> 
+   <p>Your agent’s personality shapes all downstream choices (tools, memory, planning). Treat the persona as an API contract, not a piece of prose. A well-crafted persona (with clear prompt instructions) can make a key difference in how your agent behaves at every level. Here are four guidelines to keep in mind when building the core of your agent, the persona:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p13"><em>Define a crisp role and boundaries</em>. State what the agent <em>does</em> and <em>does not</em> do; repeat critical rules at the top and bottom of the instructions to counter recency and drift. Provide an explicit “I don’t know” off-ramp.</li> 
+   <li class="readable-text" id="p14"><em>Keep scope narrow.</em> Specialized, single-responsibility agents outperform “do-­everything” bots and are easier to test and cost optimize.</li> 
+   <li class="readable-text" id="p15"><em>Prefer structured output.</em> When the agent interacts with other code or agents, return a JSON response that matches a schema (Pydantic/dataclass). It cuts parsing bugs and token bloat.</li> 
+   <li class="readable-text" id="p16"><em>Use dynamic instructions.</em> Inject runtime facts (date, org, user) via a function rather than hardcoding. Be careful not to overuse dynamic injection; keep the facts relevant to the agent’s use case and goal. Overinjection can cause token bloat, agent confusion, and poor responses.</li> 
+  </ul> 
+  <div class="readable-text" id="p17"> 
+   <p>The following listing incorporates these four principles and provides examples of how you can consistently use them to build your agents.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p18"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.1 01_core_persona_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from pydantic import BaseModel, Field
+from agents import Agent, Runner
+from datetime import date
+
+class Answer(BaseModel):    #1
+    """Machine-readable answer format."""
+    answer: str = Field(..., description="Concise, user-facing answer")
+    citations: list[str] = Field(default_factory=list)
+    confidence: float = Field(..., ge=0, le=1)
+
+def core_instructions(ctx, agent) -&gt; str:    #2
+    today = date.today().isoformat()    #3
+    return (
+        f"You are SupportMentor, a helpful domain assistant. Today is {today}.\n"    #4
+        "Always:\n"
+        "1) Answer concisely; 2) Prefer retrieved context; 3) If context is missing, say you don't know.\n"
+        "Output must be valid JSON matching the Answer schema.\n"
+        "Never: make policy exceptions or invent facts."
+    )
+
+core_agent = Agent(
+    name="SupportMentor",
+    instructions=core_instructions,   
+    output_type=Answer                
+)
+
+input = "What's our refund window for accessories?"
+result = Runner.run_sync(core_agent, input)
+print(result.final_output)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Uses a typed data class to define the output of the agent
+     <br/>#2 Keeps the agent scope narrow and focused
+     <br/>#3 Uses dynamic input in prompt instructions
+     <br/>#4 Keeps the persona role focused and well defined
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p19"> 
+   <p>This simple code example demonstrates the four principles in action. Use these four guidelines when creating your agents.</p> 
+  </div> 
+  <div class="readable-text" id="p20"> 
+   <h3 class=" readable-text-h3"><span class="num-string">11.1.2</span> Tools and agent actions</h3> 
+  </div> 
+  <div class="readable-text" id="p21"> 
+   <p>Tools are the agent’s hands and senses. Good tools can empower an agent, while poor tools can make that agent equally ineffective. There are five essential guidelines to follow when building tools, consuming tools from other MCP servers, or using agents as tools:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p22"><em>Use single-responsibility tools with crisp docstrings and typed params.</em> Models learn to use tools from descriptions and schemas. The tool’s description, name, and inputs must provide clear guidance on how to use it.</li> 
+   <li class="readable-text" id="p23"><em>Prefer function tools for your code and APIs.</em> Decorators automatically generate schemas from type hints/docstrings, making it easier to test and reuse.</li> 
+   <li class="readable-text" id="p24"><em>Control when tools run.</em> Use model/tool settings to force or forbid tools for certain turns; stop on the first tool when a single API result is enough. Outline in the agents’ prompt when and how to use tools to support this pattern.</li> 
+   <li class="readable-text" id="p25"><em>Use prebuilt tools where sensible (code, web, file search).</em> Use hosted tools and hardened MCP servers to accelerate capability. Do your due diligence to be sure any MCP server you consume is safe, robust, and focused.</li> 
+   <li class="readable-text" id="p26"><em>Plan for failures.</em> Add timeouts/retries and friendly fallbacks. Tools can fail, so make sure the agent understands why a tool failed and potential ways to correct it.</li> 
+  </ul> 
+  <div class="readable-text" id="p27"> 
+   <p>The next listing shows a simple tool-using agent that incorporates all five guidelines and demonstrates best practices.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p28"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.2 02_tool_action_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import (
+    Agent, 
+    Runner, 
+    function_tool, 
+    ModelSettings
+)
+import json
+
+def _failure_error_function(context, e) -&gt; str:        #1
+    return json.dumps({"status": "error", "message": str(e)})
+
+@function_tool(
+    failure_error_function=_failure_error_function)    #1
+def lookup_order(order_id: str) -&gt; dict:   #2
+    """Check order status by ID. Use when the user asks about their order."""         #2
+    if not order_id.startswith("ORD-"):
+        raise ValueError("Invalid order id format")
+    return {"status": "shipped", "eta_days": 3}
+
+
+tooling_agent = Agent(
+    name="ToolingAgent",
+    instructions="Use tools when needed; respond with JSON.",    #3
+    tools=[lookup_order],
+    model_settings=ModelSettings(
+        tool_choice="auto",    #3
+        parallel_tool_calls=True,     #3
+    )
+)
+print(Runner.run_sync(
+    tooling_agent, 
+    "What's the status of order ORD-123?"
+).final_output)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Plans for failures by capturing formatting and recovering gracefully from tool errors
+     <br/>#2 Single-responsibility tools with crisp, well-defined docstrings and type params
+     <br/>#3 Controls when and how tools run
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p29"> 
+   <p>The key takeaway when building and consuming tools is to ensure they are focused and well defined. This applies equally to MCP servers. Remember, every tool an agent consumes adds overhead to every LLM call the agent makes. </p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p30"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Tool bloat</h5> 
+   </div> 
+   <div class="readable-text" id="p31"> 
+    <p>As a rule, always keep tool sets small, and when using MCP servers, be conscious of how many tools the server exposes. Remember, every tool carries with it a description of how to use it, which adds tokens and context to the LLM message. To avoid confusing your agents and to reduce costs, keep tools focused on the agent’s role.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p32"> 
+   <h3 class=" readable-text-h3"><span class="num-string">11.1.3</span> Reasoning and planning</h3> 
+  </div> 
+  <div class="readable-text" id="p33"> 
+   <p>Multistep work needs a plan, a loop, and stop conditions. Reasoning and planning are the cornerstones of agentic behavior and can make the difference between achieving goals and failing. Although most foundational consumer models use reasoning today, it is often best to understand and control how that reasoning is used. The following tips can help you use reasoning within your agents:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p34"><em>Adopt ReAct for nontrivial tasks.</em> Alternate between thinking and action; inspect observations; then proceed. Use the ReAct or chain-of-thought prompt instruction patterns to guide your agent’s thought process.</li> 
+   <li class="readable-text" id="p35"><em>Plan-then-execute for big goals.</em> Draft a checklist, and record the plan using tools like sequential thinking servers. Allowing your agent to construct thoughts gives it time to think and better solve complex tasks.</li> 
+   <li class="readable-text" id="p36"><em>Limit iterations.</em> Cap the number of turns to prevent runaway loops; fail safely with a helpful message.</li> 
+   <li class="readable-text" id="p37"><em>Perform self-review before final.</em> Add a quick reflexive pass to catch obvious mistakes.</li> 
+  </ul> 
+  <div class="readable-text" id="p38"> 
+   <p>For simple one-shot tasks, you may want to avoid reasoning altogether in the agent’s instructions or within the LLM by turning the model’s reasoning down or off.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p39"> 
+   <p>Let’s see these tips in practice within a simple planning agent that has access to the reference MCP sequential thinking server.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p40"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.3 03_reasoning_planning_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from typing import Literal
+from pydantic import BaseModel
+from agents import Agent, Runner
+from agents.mcp import MCPServerStdio
+
+MAX_TURNS = 3  #1
+
+thinking_srv = MCPServerStdio(    #2
+        name="sequential-thinking",
+        params={
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        },
+    )
+
+class Answer(BaseModel):
+    status: Literal["ok", "needs_followup"] = "ok"
+    checklist: list[str] = []
+    summary: str
+    sources: list[str]
+
+instructions = f"""
+You are a planner-executor.
+If the message starts with 'PLAN ONLY', 
+return only the checklist (no actions).
+1) Plan→Execute: draft a concise 3–5 item checklist, then execute.    #2
+2) ReAct: Thought→Action(tool)→Observation;    #3
+inspect each observation before continuing.
+3) Limit: stop after at most {MAX_TURNS} tool calls;    #1
+if reached, set status='needs_followup' and return best effort.
+4) Self-review: before final, catch obvious mistakes,     #4
+ensure the question is answered, and cite sources.
+Use seq_think between actions to decide the next step. 
+Return Answer JSON only.
+"""
+
+async def main():
+    agent = Agent(
+        name="Planner", 
+        instructions=instructions, 
+        mcp_servers=[thinking_srv], 
+        max_turns=MAX_TURNS,
+        output_type=Answer)
+
+    async with thinking_srv:
+        question = "Summarize our refund policy and cite relevant internal docs."
+        plan = await Runner.run(agent, f"PLAN ONLY. Question: {question}")
+        print(plan.final_output.checklist)
+
+        result = await Runner.run(agent, question)
+        print(result.final_output)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())</pre> 
+    <div class="code-annotations-overlay-container"> #1 Limiting the number of iterations the agent can perform
+     <br/>#2 Plans then executes the big goals
+     <br/>#3 Employs the ReAct and CoT or other reasoning strategies 
+     <br/>#4 Performs a self-review before final output
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p41"> 
+   <p>The ability to encourage and control reasoning and planning can limit the external thoughts of an LLM. Today, most commercial LLMs have built-in reasoning capabilities, which can work well for general problems. But left to their own devices, reasoning models can become quite unpredictable if not adequately controlled. Don’t assume an LLM with reasoning will always do the right thing; many times, it won’t.</p> 
+  </div> 
+  <div class="readable-text" id="p42"> 
+   <h3 class=" readable-text-h3"><span class="num-string">11.1.4</span> Knowledge and memory</h3> 
+  </div> 
+  <div class="readable-text" id="p43"> 
+   <p>Retrieval is crucial to knowledge and memory, both of which rely on the ability to locate relevant information quickly. When we look at optimizing knowledge or memory, we always start with retrieval. Here are some key conventions to follow when working on retrieval and the practice of finding relevant information:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p44"><em>Consider RAG as a first-class capability.</em> Add a retrieval tool over your knowledge base (vector store plus metadata filters) instead of stuffing documents into prompts.</li> 
+   <li class="readable-text" id="p45"><em>Use sessions versus long-term memory.</em> Use session threads for short-term context; persist user facts and preferences in a vector/DB store, and retrieve them selectively. Prune aggressively.</li> 
+   <li class="readable-text" id="p46"><em>Optimize retrieval at scale.</em> Use ANN indexes (HNSW/IVF), shard by domain, and filter by metadata (e.g., product, version, date).</li> 
+   <li class="readable-text" id="p47"><em>Employ hybrid search patterns.</em> Don’t rely on a single pattern, such as vector (semantic) search. Instead, augment your strategies with keyword search, graph hierarchical search, and other patterns.</li> 
+   <li class="readable-text" id="p48"><em>Choose embeddings deliberately.</em> Balance quality, dimensions, and cost; consider domain-specific or multilingual variants to optimize your approach. Embedding size can be crucial when allocating storage.</li> 
+   <li class="readable-text" id="p49"><em>Chunk wisely and ground answers.</em> Prefer semantically coherent chunks, and instruct the answerer to use <em>only</em> retrieved context (and say “don’t know” when the answer is absent).</li> 
+   <li class="readable-text" id="p50"><em>Keep data fresh and partitioned by role and type.</em> Update your KB routinely, and isolate sensitive departments, content, or tenants. Don’t allow users access to contexts they shouldn’t have. Even if you think your basic one-index RAG will support your use case, expect that to change, and plan to implement role/type partitioning.</li> 
+  </ul> 
+  <div class="readable-text" id="p51"> 
+   <p>Listing 11.4 demonstrates these best practices in a straightforward single-agent example that uses knowledge and memory. The code assumes a generic vector database, so your implementation may vary accordingly.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p52"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.4 04_knowledge_memory_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import Agent, Runner, SQLiteSession, function_tool
+
+kb = load_vector_kb(     #1
+    embedding_model="text-embedding-3-small",       #2
+    index="HNSW",                                
+    shards=["product", "policy", "engineering"], )
+
+@function_tool
+def retrieve(query: str, product: str|None=None, version: str|None=None,
+             date: str|None=None, role: str|None=None, tenant: str|None=None) -&gt; str:
+    """Return grounded snippets using metadata filters."""
+    return kb.query(query=query, k=5,
+        filters={"product": product, "version": version, "date": date,
+                 "role": role, "tenant": tenant})    #3
+
+@function_tool
+def remember(user_id: str, fact: str) -&gt; str:
+    """Persist long-term user fact in vector memory; prune aggressively."""
+    kb.upsert(text=fact, metadata={"user_id": user_id, "kind": "preference"}, 
+    ttl_days=90); return "ok"    #3
+
+agent = Agent(
+    name="Support",
+    instructions=("Use ONLY retrieved context; cite chunk ids; if absent #4
+    say 'I don't know'."),    #4
+    tools=[retrieve, remember],
+)
+session = SQLiteSession("u42-chat")    #5
+
+kb.ingest("docs/*.md", chunking="semantic",
+          partition_by=["role", "tenant", "product", "version"])    #3
+print(Runner.run_sync(
+    agent, 
+    "Can I use the beta API on v3.2? (tenant=acme)", 
+    session=session))</pre> 
+    <div class="code-annotations-overlay-container"> #1 Uses RAG as a first-class feature of the agent
+     <br/>#2 Chooses and optimizes embeddings
+     <br/>#3 Keeps data fresh and partitioned by role
+     <br/>#4 Grounds answers and makes sure agent uses retrieved knowledge
+     <br/>#5 Uses session and long-term memory for better results
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p53"> 
+   <p>Memory can be a foundation for not only remembering the user’s conversation. It can also include memories and experiences from other agents or even conversations. Knowledge is key to improving agent context, but a complete memory solution can help an agent learn and adapt over time.</p> 
+  </div> 
+  <div class="readable-text" id="p54"> 
+   <h3 class=" readable-text-h3"><span class="num-string">11.1.5</span> Evaluation and feedback</h3> 
+  </div> 
+  <div class="readable-text" id="p55"> 
+   <p>You don’t improve what you don’t measure. At the heart of everything you do, log and measure everything internal and external to your agents. This can assist with debugging and incident resolution, and it can also help you optimize and improve your agents. You may not want to build all the recommendations here initially, but you will want a minimal setup that includes basic logging, tests, and simple guardrails. The fuller guidelines are best practices for production systems.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p56"> 
+   <p>Use the following best practices to help you use evaluation and feedback in agents:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p57"><em>Trace everything.</em> Record prompts, tool calls, token counts, latency, and outcomes. Use the SDK’s built-in tracing dashboard or Phoenix for a global view of everything. Wire logs to your observability stack.</li> 
+   <li class="readable-text" id="p58"><em>Automate evals.</em> Maintain curated test sets and LLM-as-judge checks; run them on each prompt or model change to track accuracy, safety, and resolution rates. Again, Phoenix can handle all these evaluations.</li> 
+   <li class="readable-text" id="p59"><em>Human-in-the-loop (HITL).</em> Humans are your best source of feedback. Add systems that capture human user feedback, then evaluate it in detail and optimize.</li> 
+   <li class="readable-text" id="p60"><em>Guardrails and moderation.</em> Enforce content policy and schema validation at inputs and outputs, as well as around high-risk tools. Critic and guardrail agents can help identify bad output and address it accordingly.</li> 
+   <li class="readable-text" id="p61"><em>Iterate like DevOps (AIOps).</em> Measure and capture everything, observe it, and then optimize. Remember to include tool calls and other system interactions for systems your agents may rely on, such as databases, indexes, and other relevant components.</li> 
+  </ul> 
+  <div class="readable-text" id="p62"> 
+   <p>Figure 11.2 illustrates a simple yet effective evaluation and feedback system integrated with agent deployment. As mentioned in previous chapters, the OpenAI Agents SDK provides automatic tracing, but we highly recommend using a more robust and full-­featured tool such as Phoenix.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p63">  
+   <img alt="" src="../Images/CH11_F02_Lanham4.png" style="width: 100%; max-width: max-content;" width="788" height="712"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 11.2 An agent deployment wrapped with a best practices evaluation and feedback system</span></h5>
+  </div> 
+  <div class="readable-text" id="p64"> 
+   <p>At the center of the figure is an eval and safety gate mechanism used to check all agent output. These mechanisms can serve as guardrails powered by secondary agents that provide corrective feedback and critical evaluations, as we have seen in previous chapters. Robust evaluation/feedback systems can be instrumental in building, debugging, maintaining, and optimizing agents in production.</p> 
+  </div> 
+  <div class="readable-text" id="p65"> 
+   <h2 class=" readable-text-h2"><span class="num-string">11.2</span> Tips for building a customer support agent</h2> 
+  </div> 
+  <div class="readable-text" id="p66"> 
+   <p>We will now examine specific tips for the most popular agent patterns used today, beginning with the customer support agent. This form of agent is often used to assist customers with support questions, but it can also be easily adapted to support aninternal-­facing role. Done well, these agents can augment expensive customer support roles by triaging support tickets, answering basic questions, and escalating critical events.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p67"> 
+   <p>For this type of agent, the five agent layers map respectively to the following: persona = support role; tools/action = APIs/lookup/escalation; reasoning/planning = triage logic and HITL escalation; knowledge/memory = RAG over manuals; eval/feedback = logs/HITL.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p68"> 
+   <p>Support agents need grounded answers, safe actions, and graceful escalation. These agents are often on the front lines for customer support, feedback, and complaints. As such, you should make them robust, professional, and helpful by using the following guidelines:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p69"><em>Narrow the charter.</em> Start with a bounded set of intents (orders, returns, status) and add domains over time. Keep these agents light and focused so they are more responsive and less prone to errors or hallucinations.</li> 
+   <li class="readable-text" id="p70"><em>Ground every answer.</em> Add a RAG tool over manuals, policies, and release notes. In the prompt instructions, use the phrase “use only the provided context.” But take this a step further and use grounding agents to ensure that contextual answers are always grounded.</li> 
+   <li class="readable-text" id="p71"><em>HITL as a feature.</em> Expose an <code>escalate_to_human</code> tool; route complex or angry cases and large refunds. Provide a mechanism that allows customers to give direct feedback on how well the agent addressed their problems.</li> 
+   <li class="readable-text" id="p72"><em>Identity and access.</em> Verify user identity before exposing account data; follow least privilege for tools. Grant the agent the user’s role and associated tools to control access.</li> 
+   <li class="readable-text" id="p73"><em>Resilience.</em> Implement retries, fallbacks to secondary models/tools, timeouts, and friendly failure messages. A robust agent shows users that care has been taken to address their problems, increasing their confidence.</li> 
+   <li class="readable-text" id="p74"><em>Caching and rate limits.</em> Cache popular answers (“refund policy”) and throttle external APIs to protect costs and reliability. Use caching wisely, and avoid the “store everything” mentality.</li> 
+   <li class="readable-text" id="p75"><em>Transparent traces.</em> Keep per-conversation traces to audit decisions, including searches performed and sources cited. This may involve pulling traces from Phoenix or duplicating them for support, auditing, and data capture purposes.</li> 
+  </ul> 
+  <div class="readable-text" id="p76"> 
+   <p>Listing 11.5 demonstrates a simple triage/escalation agent that can serve as the first point of contact for a customer support system. This agent controls whether the user’s question or statement requires human escalation or can be answered by the retrieval agent.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p77"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.5 06_support_agent_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import Agent, function_tool, ModelSettings
+
+@function_tool    #1
+def escalate_to_human(ticket_id: str, reason: str) -&gt; str:
+    """Escalate this conversation to a human. Use for angry users, large refunds, or unclear policy."""    
+    return f"Escalated ticket {ticket_id}: {reason}"    #2
+
+retrieval_agent = Agent(... )  #3
+
+support = Agent(
+    name="Triage Support Agent",
+    instructions=(
+        "Verify identity before account actions. Cite policies. "
+        "If unsure or user is upset, call escalate_to_human."
+        "Pass on complex queries to retrieval_agent."    #4
+    ),
+    tools=[escalate_to_human, retrieval_agent.as_tool()],  
+    model_settings=ModelSettings(tool_choice="auto")
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 A tool that handles escalation to a human
+     <br/>#2 Inside the tool, the escalation is routed as per your system.
+     <br/>#3 A retrieval agent (not shown) can be used to answer a question with context.
+     <br/>#4 Interaction between agents is through tool use.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p78"> 
+   <p>When building triage agents, you often want to focus on the handoff choices and then shape the instructions around those options. Clarity is essential so the agent understands when to choose each path.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p79"> 
+   <p>Figure 11.3 demonstrates the implementation of a standard customer support agent/agentic system. As you can see, what we describe as one agent is actually multiple agents, six in this case, performing various roles and working together.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p80">  
+   <img alt="" src="../Images/CH11_F03_Lanham4.png" style="width: 100%; max-width: max-content;" width="874" height="1052"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 11.3 A complete customer support agentic system workflow</span></h5>
+  </div> 
+  <div class="readable-text" id="p81"> 
+   <p>In a standard customer support workflow, after the user asks a question, a triage agent determines whether it can be resolved or needs to be passed on to a human. If it can assist the user, the flow next moves to a retrieval agent. This agent pulls relevant information related to the user’s question and generates comments, a summary, or an answer to the original question. This output is then checked by a grounding agent, which verifies that the output is fully grounded in the context provided.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p82"> 
+   <p>The grounding agent may also determine whether action is required and, if so, call a scoped business API. If the API is called, a guardrail agent validates and confirms that the output is expected. Finally, an answer agent takes the results of the retrieval and any API calls and provides them as an answer to the user. The user can then submit thumbs-up or thumbs-down feedback to the system based on the quality of the answer and the overall interaction.</p> 
+  </div> 
+  <div class="readable-text" id="p83"> 
+   <h2 class=" readable-text-h2"><span class="num-string">11.3</span> Tips for building a RAG agent system</h2> 
+  </div> 
+  <div class="readable-text" id="p84"> 
+   <p>RAG agents are often the backbone of other agentic systems. As we saw in the previous section, a RAG agent can be embedded into a larger agentic system, such as a customer support agent. Rarely do we see a single RAG agent providing direct output to users.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p85"> 
+   <p>Retrieval is the engine; agentic control adds routing, critique, and tooling around it. But just like the customer support example, a RAG agent system is composed of multiple agents, each with a specific role within a larger RAG workflow. Use the following tips to help guide the development of such agents:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p86"><em>Use agents only when needed.</em> If a one-shot RAG call works, skip the orchestrator. Add agents for routing (branched retrieval), diagnostics, or actions. Focus on keeping only the agents that are essential to the larger workflow.</li> 
+   <li class="readable-text" id="p87"><em>Design modular agents.</em> Triage (router) &gt; retriever &gt; answerer; optionally, a critic for corrective retrieval (CRAG).</li> 
+   <li class="readable-text" id="p88"><em>Optimize retrieval.</em> ANN indexes, metadata filters, domain-tuned embeddings, and reranking. Include hybrid retrieval options to find a wide variety of search forms. </li> 
+   <li class="readable-text" id="p89"><em>Grounding discipline.</em> Force “use only context” and require citations or source excerpts. Include specialized grounding agents to evaluate answer context.</li> 
+   <li class="readable-text" id="p90"><em>Observability and evals.</em> Log retrieval recall, answer accuracy, and cases where the system should have said “I don’t know.” Tracking retrieval calls can help identify pain points in the data search process. In almost all cases, you want your agent system to reply with “I don’t know” rather than provide a false answer with confidence.</li> 
+  </ul> 
+  <div class="readable-text" id="p91"> 
+   <p>Listing 11.6 demonstrates a single agent used for retrieval and answer generation. In practice, such an agent would be embedded in a larger agentic system. We have already looked at RAG agent patterns with grounding agents in previous chapters. The example here provides a simple reminder of the important tips required for such agents.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p92"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.6 07_rag_agent_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">from agents import Agent, function_tool
+
+@function_tool
+def retrieve(query: str, corpus: str = "product_docs", top_k: int = 5) -&gt; list[dict]:
+    """Return top-k passages with metadata from the selected index."""
+    # ... ANN + metadata filtering ...
+    return [{"text": "...", "source": "KB-123", "section": "Refunds"}]
+
+answerer = Agent(
+    name="RAG-Answerer",
+    instructions=(
+        "Use ONLY the passages provided via `retrieve`. "    #1
+        "If none answer the question, reply: "
+        "'I don't know based on the available documents.' "    #2
+        "Return a short summary and cite sources."    #3
+    ),
+    tools=[retrieve],
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Constrains answers to just the context retrieved
+     <br/>#2 Don’t let your agent be afraid to say it doesn’t know something.
+     <br/>#3 Be sure to always have answer reference context citations.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p93"> 
+   <p>Figure 11.4 shows an expanded RAG agent system that incorporates multiple context sources and forms of search. </p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p94">  
+   <img alt="" src="../Images/CH11_F04_Lanham4.png" style="width: 100%; max-width: max-content;" width="910" height="775"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 11.4 A more advanced RAG agent system that can query multiple context sources to answer a question or fulfill a search request</span></h5>
+  </div> 
+  <div class="readable-text" id="p95"> 
+   <p>We may place a grounding agent before a context-ranking agent that determines how well the retrieved documents answer the question. If the documents do not sufficiently answer it, the ranking agent passes the query back to a refinement agent. The refinement agent modifies the query and reissues the search for documents. To prevent this loop from running forever, we would provide a loop counter to exit, which is not shown.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p96"> 
+   <p>There are, of course, numerous other patterns you could use to build a RAG agent system. Just remember the key tips provided herein to help guide the development of your own agentic RAG workflows.</p> 
+  </div> 
+  <div class="readable-text" id="p97"> 
+   <h2 class=" readable-text-h2"><span class="num-string">11.4</span> Tips for building a deep research agent system</h2> 
+  </div> 
+  <div class="readable-text" id="p98"> 
+   <p>Deep research agents mix open-ended web exploration, iterative planning, and synthesis from many sources. Virtually all major LLM providers (ChatGPT, Claude, and Gemini) support such agents. If you need a deep research agent to search other sources of information, such as knowledge bases, internal system databases, and document stores, we generally recommend building an internal version.</p> 
+  </div> 
+  <div class="readable-text" id="p99"> 
+   <p>Building an internal deep research agent can be complex and require developing a team of specialized agents. Use this type of agent only when you know simpler agent systems may lack the ability to solve complex problems. Here are our general best practices for developing these types of agentic systems:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p100"><em>Two-tier orchestratio</em><em>n</em><em>—</em>A research planner (brain) delegates to stateless <em>workers</em> (web searcher, extractor, analyst, summarizer). Keep workers tool-like (no long memory).</li> 
+   <li class="readable-text" id="p101"><em>Tool policy control</em><em>s</em><em>—</em>Force the planner to call the retrieval and web tools for facts. Forbid direct answers to claims without sources.</li> 
+   <li class="readable-text" id="p102"><em>Self-critique and fact check</em><em>s</em><em>—</em>Add a critic pass to check coverage, contradictions, and missing perspectives before finalization.</li> 
+   <li class="readable-text" id="p103"><em>Streaming U</em><em>X</em><em>—</em>Stream partial findings and the evolving outline. This improves perceived latency and supports “checkpoint” approvals. This could be a static list of messages, such as “Now searching or thinking,” or the actual reasoning thoughts the agent is outputting.</li> 
+   <li class="readable-text" id="p104"><em>Caching and budget</em><em>s</em><em>—</em>Cache repeated queries and set per-run token budgets with alerting. Throttle web/API calls. This can be a great asset when agents repeat the same query, but it can also hinder search. Therefore, be sure to clear the cache at regular intervals to avoid returning stale data.</li> 
+  </ul> 
+  <div class="readable-text" id="p105"> 
+   <p>Listing 11.7 provides a simple example of an agent brain (research planner) with several worker (hands) agents. At the top of this code, we create several tools to search, extract, and analyze search results. These may be direct tools or wrappers for agents that act as tools. Determining whether a tool should be a tool or an agent depends on what decisions the tool makes. Tools that require decision-making are agents that use tools.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p106"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 11.7 08_deep_research_agent_tips.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">import asyncio
+
+from agents import Agent, Runner
+from openai.types.responses import ResponseTextDeltaEvent
+
+web_search_tool = ...   #1
+extract_tool = ...   #2
+analyze_tool = ...   #2
+
+critic = Agent(name="Critic", instructions="Check completeness, bias, contradictions.")
+writer = Agent(
+    name="Writer", instructions="Synthesize into a concise brief with citations."
+)    #3
+
+researcher = Agent(
+    name="ResearchPlanner",
+    instructions=(
+        "Break down the research goal. Always use web/doc tools for facts. "
+        "Track sources and avoid unsupported claims."
+    ),
+    tools=[
+        web_search_tool,
+        extract_tool,
+        analyze_tool,
+        critic.as_tool(),
+        writer.as_tool(),
+    ],
+)
+
+# Stream results to your UI
+stream = Runner.run_streamed(
+    researcher, "Map the 3 best open RAG rerankers and compare."
+)    #D
+
+async def main():
+    result = Runner.run_streamed(
+        researcher, input="Map the 3 best open RAG rerankers and compare."
+    )
+    async for event in result.stream_events():    #4
+        if event.type == "raw_response_event" and isinstance(
+            event.data, ResponseTextDeltaEvent
+        ):
+            print(event.data.delta, end="", flush=True)
+
+if __name__ == "__main__":
+    asyncio.run(main())</pre> 
+    <div class="code-annotations-overlay-container"> #1 This could be an agent or a WebSearchTool() or your own @function_tool.
+     <br/>#2 These could be tools or specialized agents, depending on details and required decisions.
+     <br/>#3 Uses a critic and writer agent first to check context answers question and then writes the answer
+     <br/>#4 Streams the output of the brain (researcher) agent as it directs and completes tasks
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p107"> 
+   <p>After the research agent searches for and finds enough context, it hands off the results to a critic agent. The critic agent then determines whether the retrieved context answers the initial question. If the critic agent determines that it does, it passes the search context to a writer agent to output an answer. But if the critic agent determines that the question needs more context, it returns the search to the researcher.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p108"> 
+   <p>Figure 11.5 shows the entire deep research agent pattern from the previous code example. Here, the research planner agent acts as the brain to the various agents’ hands (web search, extractor, and analyst agents). After the workers have found relevant context, they return the results to the planner. The planner then passes the results to a critic, who determines whether there is enough information to answer the initial question. If there is not enough information, the critic returns the result to the planner and requests additional context.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p109">  
+   <img alt="" src="../Images/CH11_F05_Lanham4.png" style="width: 100%; max-width: max-content;" width="788" height="752"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 11.5 Implementation of the deep research agent system</span></h5>
+  </div> 
+  <div class="readable-text intended-text" id="p110"> 
+   <p>Likewise, if the critic determines that enough information has been found, it passes the results to the final report agent. This final agent constructs the answer or report, ensuring that all previously returned references are appropriately cited within the answer. Requiring the agent to cite answers properly also provides direct grounding in the context found earlier.</p> 
+  </div> 
+  <div class="readable-text" id="p111"> 
+   <h2 class=" readable-text-h2">Summary</h2> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p112">Treat agent design as five stacked layers: persona, tools and actions, reasoning and planning, knowledge and memory, and evaluation and feedback. Optimize each layer independently, then integrate.</li> 
+   <li class="readable-text" id="p113">Write the persona as an API contract, not prose: a clear role, boundaries, and an explicit “I don’t know” off-ramp.</li> 
+   <li class="readable-text" id="p114">Keep the scope narrow (single responsibility) for higher accuracy and easier testing­­/cost control.</li> 
+   <li class="readable-text" id="p115">Prefer structured, typed outputs (Pydantic/dataclass JSON) to eliminate parsing brittleness.</li> 
+   <li class="readable-text" id="p116">Use dynamic instructions (inject date/org/user) at runtime to avoid stale facts.</li> 
+   <li class="readable-text" id="p117">Build single-responsibility tools with crisp names, docstrings, and typed parameters. The model learns tool use from these schemas.</li> 
+   <li class="readable-text" id="p118">Control when tools run (e.g., <code>tool_choice</code>, parallel tool calls); stop early when one call suffices.</li> 
+   <li class="readable-text" id="p119">Use prebuilt or hosted tools where sensible, but be selective. </li> 
+   <li class="readable-text" id="p120">Plan for failures: timeouts, retries, graceful error payloads, and fallbacks.</li> 
+   <li class="readable-text" id="p121">Adopt ReAct or chain-of-thought patterns for nontrivial tasks. </li> 
+   <li class="readable-text" id="p122">Plan, then execute: draft a short checklist before acting; consider a lightweight “thinking” server or step.</li> 
+   <li class="readable-text" id="p123">Cap iterations to prevent runaway loops. Signal <code>needs_followup</code> on budget/turn limits.</li> 
+   <li class="readable-text" id="p124">Add a quick self-review pass before finalizing to catch obvious mistakes.</li> 
+   <li class="readable-text" id="p125">Treat RAG as first-class: use a retrieval tool over a KB instead of stuffing docs into prompts.</li> 
+   <li class="readable-text" id="p126">Separate session memory (short-term thread context) from long-term memory (vector/DB), and prune aggressively.</li> 
+   <li class="readable-text" id="p127">Optimize retrieval: use ANN indexes, shard by domain, filter with metadata, and consider domain-specific or multilingual embeddings.</li> 
+   <li class="readable-text" id="p128">Use hybrid search (semantic plus keyword plus hierarchical/graph) for recall and precision.</li> 
+   <li class="readable-text" id="p129">Chunk semantically, ground answers strictly in the retrieved context, and be comfortable saying “don’t know.”</li> 
+   <li class="readable-text" id="p130">Keep data fresh and partitioned by role/tenant to enforce access boundaries.</li> 
+   <li class="readable-text" id="p131">Trace everything: prompts, tool calls, token counts, latency, and outcomes; wire them to your observability stack.</li> 
+   <li class="readable-text" id="p132">Automate evaluations (LLM-as-judge plus curated test sets) for each prompt/model change.</li> 
+   <li class="readable-text" id="p133">Incorporate HITL: collect user feedback, review complex cases. </li> 
+   <li class="readable-text" id="p134">Add guardrails and moderation at inputs, tool calls, and outputs; validate schemas.</li> 
+   <li class="readable-text" id="p135">Practice AIOps: measure &gt; observe &gt; iterate, including downstream systems (indexes/APIs) your agents depend on.</li> 
+   <li class="readable-text" id="p136">Narrow the charter (orders, returns, status) first; expand gradually.</li> 
+   <li class="readable-text" id="p137">Ground every answer via RAG; add a dedicated grounding agent if needed.</li> 
+   <li class="readable-text" id="p138">Provide HITL escalation (<code>escalate_to_human</code>) and capture user feedback.</li> 
+   <li class="readable-text" id="p139">Enforce identity and least-privilege access before revealing account data or invoking business APIs.</li> 
+   <li class="readable-text" id="p140">Engineer resilience (retries, fallbacks, timeouts) and cache popular answers; apply rate limits.</li> 
+   <li class="readable-text" id="p141">Maintain transparent traces per conversation for auditability. </li> 
+   <li class="readable-text" id="p142">Real-world “support agent” = multiple cooperating agents (triage &gt; retrieval &gt; grounding &gt; action/guardrail &gt; answer).</li> 
+   <li class="readable-text" id="p143">Use an agentic orchestrator only when needed; if one-shot RAG suffices, keep it simple.</li> 
+   <li class="readable-text" id="p144">Prefer modular roles: router/triage &gt; retriever &gt; answerer; optionally, a critic (CRAG) for corrective retrieval.</li> 
+   <li class="readable-text" id="p145">Optimize retrieval (ANN, filters, rerankers, HyDE) and enforce grounding with citations.</li> 
+   <li class="readable-text" id="p146">Instrument recall, accuracy, and “should have said I don’t know” cases, and close the loop with evals.</li> 
+   <li class="readable-text" id="p147">For advanced systems, support multiple corpora, ranking/refinement loops, and bounded retries.</li> 
+   <li class="readable-text" id="p148">Use two-tier orchestration: a planner (brain) delegates to stateless workers (hands) for web search, extraction, analysis, and writing.</li> 
+   <li class="readable-text" id="p149">Enforce tool-use policies: no claims without cited sources; facts must come from retrieval or documentation tools.</li> 
+   <li class="readable-text" id="p150">Add a self-critique/fact check before the final report (critic pass).</li> 
+   <li class="readable-text" id="p151">Provide a streaming UX to surface partial findings and outlines as they emerge.</li> 
+   <li class="readable-text" id="p152">Manage caching and budgets: dedupe repeated queries, cap tokens and calls, and clear caches periodically to avoid staleness.</li> 
+   <li class="readable-text" id="p153">Production-ready agentic systems emerge from tight personas, well-scoped tools, guided reasoning, disciplined retrieval, and relentless measurement. These elements are assembled into modular, auditable workflows with clear escalation paths and grounded outputs.</li> 
+  </ul>
+ </div></div></body></html>

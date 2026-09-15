@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-merged">appendix B</span>  Node.js setup for local MCP servers</h1> 
+  </div> 
+  <div class="readable-text" id="p2"> 
+   <p>Many Model Context Protocol (MCP) servers are distributed as Node.js packages on the public npm registry. The most convenient way to run one of these servers locally is with npx, a small command-line tool that ships with Node.js. Given a package name, npx downloads the package if it is not already cached, resolves its executable entry point, and runs it, all in a single command. That makes it possible to point an MCP client such as Claude Desktop, an IDE plugin, or a custom agent at a fresh MCP server without writing any installation scripts of your own.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p3"> 
+   <p>Before you can take advantage of any of this, you need a working Node.js installation on your machine. This appendix walks through that setup end to end. It is organized into four sections that follow the natural setup order: installing Node.js, verifying that node and npx are on your path, running an MCP server with npx, and, finally, troubleshooting the most common problems and keeping your installation healthy over time.</p> 
+  </div> 
+  <div class="readable-text" id="p4"> 
+   <h2 class=" readable-text-h2"><span class="num-string">B.1</span> Installing Node.js</h2> 
+  </div> 
+  <div class="readable-text" id="p5"> 
+   <p>Node.js is the JavaScript runtime that npx depends on, and it bundles both npm (the package manager) and npx in a single installer. For the MCP servers covered in this book, install the current long-term support (LTS) release of Node 20 or later. The following subsections show the recommended installation path for each major operating system. </p> 
+  </div> 
+  <div class="readable-text" id="p6"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.1.1</span> Installing Node.js on Windows</h3> 
+  </div> 
+  <div class="readable-text" id="p7"> 
+   <p>On Windows, the simplest path is the official installer:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p8">Open <a href="https://nodejs.org"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/nodejs.org</span></a> in a browser and download the LTS installer for Windows.</li> 
+   <li class="readable-text" id="p9">Double-click the downloaded .msi file and accept the defaults. Leave the Automatically Install the Necessary Tools option enabled if you plan to build native modules. Otherwise, it is safe to clear it.</li> 
+   <li class="readable-text" id="p10">Close and reopen any open command prompts or PowerShell windows so they pick up the updated PATH environment variable.</li> 
+  </ol> 
+  <div class="readable-text" id="p11"> 
+   <p>If you prefer to manage multiple Node versions side by side, install nvm-windows from <a href="https://github.com/coreybutler/nvm-windows"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/github.com/coreybutler/nvm-windows</span></a> instead. Then run <code>nvm</code> <code>install</code> <code>lts</code>, followed by <code>nvm</code> <code>use</code> <code>lts</code>.</p> 
+  </div> 
+  <div class="readable-text" id="p12"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.1.2</span> Installing Node.js on macOS</h3> 
+  </div> 
+  <div class="readable-text" id="p13"> 
+   <p>On macOS, the recommended path is Homebrew, which keeps Node up to date alongside your other developer tools. From a terminal, run</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p14"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">brew install node</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p15"> 
+   <p>If you do not have Homebrew installed, follow the instructions at <a href="https://brew.sh"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/brew.sh</span></a> first. Alternatively, you can download the macOS .pkg installer from <a href="https://nodejs.org"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/nodejs.org</span></a> and run it like any other macOS installer.</p> 
+  </div> 
+  <div class="readable-text" id="p16"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.1.3</span> Installing Node.js on Linux or WSL</h3> 
+  </div> 
+  <div class="readable-text" id="p17"> 
+   <p>On Linux and Windows Subsystem for Linux (WSL), the recommended path is nvm, the Node Version Manager. Unlike the distribution’s system package, nvm lets you switch Node versions on a per-project basis without using <code>sudo</code>. Install it with</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p18"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p19"> 
+   <p>Close and reopen your terminal so the new shell configuration is picked up; then install and activate the LTS release of Node:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p20"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">nvm install --lts
+nvm use --lts</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p21"> 
+   <p>If you prefer to use your distribution’s package manager instead, the Node.js project publishes official APT and DNF repositories at <a href="https://github.com/nodesource/distributions"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/github.com/nodesource/­distributions</span></a>. Follow the instructions there for your specific distribution.</p> 
+  </div> 
+  <div class="readable-text" id="p22"> 
+   <h2 class=" readable-text-h2"><span class="num-string">B.2</span> Verifying your Node and npx installation</h2> 
+  </div> 
+  <div class="readable-text" id="p23"> 
+   <p>Once Node is installed, it is worth taking a moment to confirm that everything is on your PATH and to develop a mental model of how npx handles the packages it runs. The following subsections cover the version check and a brief tour of the npx cache.</p> 
+  </div> 
+  <div class="readable-text" id="p24"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.2.1</span> Checking the installed versions</h3> 
+  </div> 
+  <div class="readable-text" id="p25"> 
+   <p>Open a new terminal window and run the following three commands:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p26"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">node --version
+npm --version
+npx --version</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p27"> 
+   <p>Each command should print a version number. <code>node</code> <code>--version</code> should report v20 or later, and <code>npm</code> <code>--version</code> and <code>npx</code> <code>--version</code> should each report a number close to 10. If any of the three commands returns a Command Not Found error, the installer’s PATH update did not take effect. Close and reopen your terminal (or your whole shell session) and try again.</p> 
+  </div> 
+  <div class="readable-text" id="p28"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.2.2</span> How npx finds and caches packages</h3> 
+  </div> 
+  <div class="readable-text" id="p29"> 
+   <p>When you run a package with npx, it does roughly the following:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p30">It looks for the package in your local node_modules folder. If it finds the executable there, it runs that copy.</li> 
+   <li class="readable-text" id="p31">If the package is not installed locally, it looks in the global npm cache at ~/.npm/_npx (or the equivalent on Windows). If the requested version is already cached, it runs the cached copy.</li> 
+   <li class="readable-text" id="p32">If the package is not cached either, npx downloads it from the npm registry, places it in the cache, and runs it.</li> 
+  </ul> 
+  <div class="readable-text" id="p33"> 
+   <p>The practical consequence is that the first run of an MCP server with npx takes noticeably longer than subsequent runs because it spends time downloading the package. From the second run onward, npx simply launches the cached copy.</p> 
+  </div> 
+  <div class="readable-text print-book-callout" id="p34"> 
+   <p><span class="print-book-callout-head">TIP</span> The <code>-y</code> flag (covered in the next section) tells npx to skip the interactive “Need to install the following packages, ok?” prompt. MCP clients that spawn an MCP server as a subprocess do not have a way to answer that prompt, so always include <code>-y</code> when configuring a client.</p> 
+  </div> 
+  <div class="readable-text" id="p35"> 
+   <h2 class=" readable-text-h2"><span class="num-string">B.3</span> Running an MCP server with npx</h2> 
+  </div> 
+  <div class="readable-text" id="p36"> 
+   <p>With Node installed and verified, you are ready to run an MCP server. The following subsections break the npx command into its parts, then walk through a concrete example using the official filesystem MCP server, and finally show how to wire that server into an MCP client.</p> 
+  </div> 
+  <div class="readable-text" id="p37"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.3.1</span> Anatomy of the npx command</h3> 
+  </div> 
+  <div class="readable-text" id="p38"> 
+   <p>A typical command to launch an MCP server with npx has four parts:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p39"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">npx -y &lt;package-name&gt; [server-arguments...]</pre>  
+   </div> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p40"><code>npx</code>—The launcher that ships with Node.js.</li> 
+   <li class="readable-text" id="p41"><code>-y</code>—Short for <code>--yes</code>. Accepts the install prompt automatically, which is required when an MCP client spawns the server as a subprocess.</li> 
+   <li class="readable-text" id="p42"><code>&lt;package-name&gt;</code>—The npm package that ships the MCP server, for example, <code>@modelcontextprotocol/server-filesystem</code>.</li> 
+   <li class="readable-text" id="p43"><code>[server-arguments...]</code>—Any arguments the MCP server itself accepts. These are passed through to the server process. The filesystem server, for instance, takes one or more directory paths that it will allow the MCP client to read and write.</li> 
+  </ul> 
+  <div class="readable-text" id="p44"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.3.2</span> Running the filesystem MCP server</h3> 
+  </div> 
+  <div class="readable-text" id="p45"> 
+   <p>As a concrete example, the official filesystem MCP server lives at <code>@modelcontextprotocol/­server-filesystem</code> on npm. To run it against a single directory, open a terminal and run</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p46"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">npx -y @modelcontextprotocol/server-filesystem /path/to/allowed/directory</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p47"> 
+   <p>On Windows, replace the Unix-style path with a Windows path, for example:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p48"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">npx -y @modelcontextprotocol/server-filesystem C:\Users\you\Documents</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p49"> 
+   <p>The first run downloads the package and may take a few seconds; subsequent runs start almost immediately. Once the server is running, it communicates with its client over standard input and output using the MCP protocol. Running it directly in a terminal is mainly useful as a sanity check: the server will print a startup banner and then sit waiting for MCP messages on stdin. Press Ctrl-C to stop it.</p> 
+  </div> 
+  <div class="readable-text" id="p50"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.3.3</span> Wiring the server into an MCP client</h3> 
+  </div> 
+  <div class="readable-text" id="p51"> 
+   <p>MCP clients launch their servers as subprocesses, which means you do not normally run the npx command yourself—you describe it to the client in a configuration file. The exact location of that file depends on the client. Claude Desktop, for example, reads from a JSON config file in your user profile. The entry for the filesystem server looks like the following:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p52"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">{
+  <span class="CharOverride-1">"</span>mcpServers<span class="CharOverride-1">"</span>: {
+    <span class="CharOverride-1">"</span>filesystem<span class="CharOverride-1">"</span>: {
+      <span class="CharOverride-1">"</span>command<span class="CharOverride-1">"</span>: <span class="CharOverride-1">"</span>npx<span class="CharOverride-1">"</span>,
+      <span class="CharOverride-1">"</span>args<span class="CharOverride-1">"</span>: [
+        <span class="CharOverride-1">"</span>-y<span class="CharOverride-1">"</span>,
+        <span class="CharOverride-1">"</span>@modelcontextprotocol/server-filesystem<span class="CharOverride-1">"</span>,
+        <span class="CharOverride-1">"</span>/path/to/allowed/directory<span class="CharOverride-1">"</span>
+      ]
+    }
+  }
+}</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p53"> 
+   <p>Note that the <code>command</code> field is just <code>npx</code> and the package name appears as one of the <code>args</code> entries, with <code>-y</code> listed first to suppress the install prompt. This same pattern works for any MCP server published on npm: change the package name and the trailing arguments to match the server you want to run.</p> 
+  </div> 
+  <div class="readable-text" id="p54"> 
+   <h2 class=" readable-text-h2"><span class="num-string">B.4</span> Troubleshooting and keeping Node healthy</h2> 
+  </div> 
+  <div class="readable-text" id="p55"> 
+   <p>Most problems with npx-launched MCP servers fall into one of a few categories. The following subsections cover the problems you are most likely to see, how to clear the npx cache when a stale copy is causing trouble, and how to keep Node itself up to date.</p> 
+  </div> 
+  <div class="readable-text" id="p56"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.4.1</span> Common issues</h3> 
+  </div> 
+  <div class="readable-text" id="p57"> 
+   <p>Following are the problems you are most likely to see:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p58"><code>"</code><code>npx:</code> <code>command</code> <code>not</code> <code>found</code><code>"</code>—Your shell cannot see the Node binaries. Close and reopen your terminal so the updated PATH is picked up. On macOS and Linux, confirm that <code>nvm</code> <code>use</code> <code>--lts</code> was run in the current shell, or add it to your shell startup file.</li> 
+   <li class="readable-text" id="p59"><code>EACCES</code><em> or permission errors during instal</em><em>l</em>—You installed Node with <code>sudo</code>, and the cache is now owned by root. The cleanest fix is to remove the system-wide install and switch to nvm, which installs Node into your home directory.</li> 
+   <li class="readable-text" id="p60"><em>MCP client reports the server exited immediatel</em><em>y</em>—Run the same npx command directly in a terminal. The server’s error message will appear there but is normally swallowed by the client.</li> 
+   <li class="readable-text" id="p61"><em>MCP client hangs at startu</em><em>p</em>—You almost certainly forgot the <code>-y</code> flag, and npx is waiting on an install confirmation prompt the client cannot answer.</li> 
+  </ul> 
+  <div class="readable-text" id="p62"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.4.2</span> Clearing the npx cache</h3> 
+  </div> 
+  <div class="readable-text" id="p63"> 
+   <p>If you suspect npx is running a stale copy of an MCP server, for example, after a package publishes a fix you want to pick up, clear the cache and let it redownload on the next run:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p64"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">npm cache clean --force</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p65"> 
+   <p>To pin a specific version on the next run instead, append <code>@&lt;version&gt;</code> to the package name, for example, <code>npx</code> <code>-y</code> <code>@modelcontextprotocol/server-filesystem@latest</code>. This forces npx to resolve the requested version against the registry before running.</p> 
+  </div> 
+  <div class="readable-text" id="p66"> 
+   <h3 class=" readable-text-h3"><span class="num-string">B.4.3</span> Updating Node</h3> 
+  </div> 
+  <div class="readable-text" id="p67"> 
+   <p>Node ships a new LTS release roughly once a year. To stay on the current LTS, update periodically using the same tool you installed Node with:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p68">On Windows with the official installer, download the latest LTS .msi from <a href="https://nodejs.org"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/nodejs.org</span></a>, and run it. The installer upgrades the existing installation in place. </li> 
+   <li class="readable-text" id="p69">With Homebrew on macOS, run <code>brew upgrade node</code>.</li> 
+   <li class="readable-text" id="p70">With <code>nvm</code> on Linux, macOS, or WSL, run <code>nvm</code> <code>install</code> <code>--lts</code> followed by <code>nvm alias default lts/*</code> to make the new version the default for future shells.</li> 
+  </ul> 
+  <div class="readable-text" id="p71"> 
+   <p>After upgrading, run the three version checks from section B.2.1 again to confirm the new versions are on your PATH.</p> 
+  </div>
+ </div></div></body></html>

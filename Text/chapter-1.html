@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-numbering"><span class="num-string">1</span> </span><span class="chapter-title-text">The rise of AI agents</span></h1> 
+  </div> 
+  <div class="introduction-summary"> 
+   <h3 class="introduction-header"><span class="CharOverride-1">This chapter covers</span><span class="CharOverride-1"></span></h3> 
+   <ul> 
+    <li class="readable-text" id="p2"><span class="CharOverride-2">Defining agents and agentic thinking</span></li> 
+    <li class="readable-text" id="p3"><span class="CharOverride-2">Introducing the Model Context Protocol</span></li> 
+    <li class="readable-text" id="p4"><span class="CharOverride-2">Understanding the agent foundational layers</span></li> 
+    <li class="readable-text" id="p5"><span class="CharOverride-2">Advancing to multi-agent systems</span></li> 
+   </ul> 
+  </div> 
+  <div class="readable-text" id="p6"> 
+   <p>By themselves, LLM-based apps, like simple chatbots, can generate responses and answer questions. Next, we want them to make plans and carry them out. We want them to book a flight, not just list available flights, or update a project tracker, not just list the changes that need to be made. To equip AI apps with active abilities, we add AI agents to the system. The agent is not a new concept in machine learning and artificial intelligence, and the term can be ambiguous. But when we talk about intelligent or AI agents, we generally mean software that perceives its environment, decides what to do, and takes action to achieve a goal, using the resources provided by an LLM.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p7"> 
+   <p>This book is about building and working with AI agents to expand the abilities of LLM-powered systems. We look at how agents work, what makes them powerful, and how we can build agents to automate complex tasks. We start with a single, simplified AI agent, then expand to agentic systems, such as agent flow, orchestration, and collaboration patterns. These systems have rapidly expanded what a single agent can reason about and accomplish. You will learn to build and connect these agents using modern frameworks like the OpenAI Agents SDK and the Model Context Protocol, linking them to databases, APIs, knowledge stores, and complete applications. The goal is to guide you from prompt tinkerer to agent architect, equipped with patterns, code, and mental models that let your agents earn their keep in production.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p8"> 
+   <p>Our focus here is on the practical skills of architecting and building agents and agentic systems. We do this with concise, informative examples rather than long production code, so the mechanics remain visible at every step. Toward the end of the book, we look at the production-grade architectures powering today’s most capable AI systems. <em>AI Agents in Action</em> is not a production operations manual, though. We touch on production concerns like compliance and security, but we do not cover every deployment knob, observability stack, or compliance question that comes with shipping agents at scale. The goal is to teach you the architecture and building blocks well enough that those production decisions become tractable. The examples stay deliberately small so the ideas stay sharp.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p9"> 
+   <p>This journey isn’t just about technology; it’s about reimagining how we approach problem-solving. I hope this book inspires you to see intelligent agents as partners in innovation that can transform ideas into action in ways once thought impossible.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p10"> 
+   <p>Let’s start by clarifying what we mean by agents in this context and what AI agents bring to AI.</p> 
+  </div> 
+  <div class="readable-text" id="p11"> 
+   <h2 class=" readable-text-h2"><span class="num-string">1.1</span> Defining agents and agentic thinking</h2> 
+  </div> 
+  <div class="readable-text" id="p12"> 
+   <p>The concept of an <em>agent</em> is not new to artificial intelligence. In reinforcement learning, an agent is an entity that makes decisions and learns from interactions with its environment. In other contexts, the term is used more loosely to describe software that performs tasks on a user’s behalf. Across these traditions, though, the core idea is consistent: an agent perceives its environment, decides what to do, and takes action to achieve a goal. This definition is simple but broad enough to encompass everything from classical AI systems to the LLM-powered agents we will build in this book.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p13"> 
+   <p>The term <em>agentic</em> extends this idea. It describes systems or behaviors that exhibit agency, the ability to perceive, decide, and act with some degree of autonomy in pursuit of a goal. When we call a system agentic, we mean it follows these patterns in its operation, not merely that it superficially resembles an agent. Although philosophical definitions of agency can be more demanding and require elements like intention or adaptability, this practical framing is sufficient for engineering purposes.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p14"> 
+   <p>This distinction becomes clearer when contrasted with traditional AI assistants. A generative assistant responds to a prompt and then stops. An agent, by comparison, works toward a goal over multiple steps, choosing what to do next based on what it observes along the way. Autonomy and persistence shift a system from a reactive assistant to an active agent. As modern systems increasingly incorporate tools and multistep workflows, seen in features like “Deep Research” from providers such as OpenAI, Google, and Anthropic, the line between assistant and agent can blur. That makes it important to understand the underlying patterns.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p15"> 
+   <p>Although our emphasis here is on agents powered by large language models, the design space has a long history. Rule-based systems, symbolic reasoning, belief-desire-­intention architectures, reinforcement learning agents, and neuro-symbolic approaches all offer useful patterns, each suited to different kinds of problems. What has changed is the scope: LLMs greatly expand what a single agent can reason about and accomplish.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p16"> 
+   <p>There has long been some confusion about what makes an agent. To clarify the term, let’s review the evolution from direct interactions with language models to LLM actions, assistant proxies, assistants, agents and agentic systems.</p> 
+  </div> 
+  <div class="readable-text" id="p17"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.1.1</span> Understanding agent, assistant, and LLM patterns</h3> 
+  </div> 
+  <div class="readable-text" id="p18"> 
+   <p>When ChatGPT, Claude, and similar systems were first released, you interacted directly with the underlying LLM: you typed a prompt, the model generated text, and that was the entire loop. If you used these tools in their early days, that direct chat experience is likely what you remember. One step up from these interactions is asking an LLM to use a tool to create an image, search the web, or perform another task. Today’s ChatGPT and Claude do this routinely, but it represents a meaningful shift from the original pattern. Figure 1.1 shows examples where a user may interact with an LLM directly (top) or through an LLM that uses tools, called an assistant (bottom). Notice how using ChatGPT as an assistant creates a better prompt for image generation.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p19">  
+   <img alt="" src="../Images/CH01_F01_Lanham4.png" style="width: 100%; max-width: max-content;" width="927" height="614"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.1 Common patterns for directly communicating with an LLM, either on its own or with tools. If you’ve used earlier versions of ChatGPT, you’ve experienced direct interaction with the LLM. No proxy agent or other assistant acted on your behalf. Today, ChatGPT has many tools that help it respond, including web search and coding, making the current version function more like an assistant.</span></h5>
+  </div> 
+  <div class="readable-text" id="p20"> 
+   <p>If you have used Nano Banana, Image 2.0, or other image-generation tools through platforms like ChatGPT or Gemini, you have experienced a proxy agent interaction. In this case, an LLM intercepts your requests and reformulates them into a format better suited to the task.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p21"> 
+   <p>From these two direct communication patterns, we have evolved into tool-using assistants and agents. The terminology in this space is unsettled, and you will see “assistant” and “agent” used interchangeably in many places. For this book, we draw the line along the axis of autonomy. Here, we use the term <em>assistant</em> to refer to an LLM that can use tools on behalf of the user but requires approval at each step and lacks the agency to plan and complete multiple tasks on its own. In contrast, <em>agents</em> can work autonomously to reason, plan, and undertake tasks such as sending emails, creating presentations, booking flights, and performing research.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p22"> 
+   <p>In practice, the line between assistant and agent is a spectrum rather than a hard boundary. Production agents almost always implement graduated human-in-the-loop controls: low-risk steps run autonomously, medium-risk steps may require confirmation, and high-stakes actions such as sending emails, making purchases, or deleting records are typically gated by explicit approval, regardless of the agent’s overall autonomy level. When we describe agents as autonomous in this book, we mean they can plan and execute multistep work on their own. We do not mean they should run unsupervised in every situation. Designing the right approval and oversight mechanisms is part of building an agent, and we return to it throughout the book.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p23"> 
+   <p>Table 1.1 summarizes the four interaction patterns we will work with, from direct chat through autonomous agents. </p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p24"> 
+   <h5 class=" browsable-container-h5">Table 1.1 The four LLM interaction patterns covered in this book</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-1"/> 
+     <col class="_idGenTableRowColumn-2"/> 
+     <col class="_idGenTableRowColumn-3"/> 
+     <col class="_idGenTableRowColumn-4"/> 
+     <col class="_idGenTableRowColumn-5"/> 
+    </colgroup> 
+    <thead> 
+     <tr class="No-Table-Style _idGenTableRowColumn-6"> 
+      <th class="No-Table-Style CellOverride-1" scope="col"> <p class="_TableHead">Pattern</p> </th> 
+      <th class="No-Table-Style CellOverride-2" scope="col"> <p class="_TableHead">Approval model</p> </th> 
+      <th class="No-Table-Style CellOverride-2" scope="col"> <p class="_TableHead">Autonomy level</p> </th> 
+      <th class="No-Table-Style CellOverride-2" scope="col"> <p class="_TableHead">Typical use case</p> </th> 
+      <th class="No-Table-Style CellOverride-3" scope="col"> <p class="_TableHead">Example platform</p> </th> 
+     </tr> 
+    </thead> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-4"> <p class="_TableBody">Direct LLM chat</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">No tools invoked; the model only generates text</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">None</p> </td> 
+      <td class="No-Table-Style CellOverride-5"> <p class="_TableBody">Q&amp;A, drafting, brainstorming, learning</p> </td> 
+      <td class="No-Table-Style CellOverride-6"> <p class="_TableBody">Original ChatGPT (2022), early Claude (2023)</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-7"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Tool-augmented LLM</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Implicit per call; a user prompt triggers a single tool</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Low</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Image generation, web search, simple lookups</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">ChatGPT with DALL·E, Gemini with Google Search</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-8"> 
+      <td class="No-Table-Style CellOverride-7"> <p class="_TableBody">Assistant</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Per-task approval; the user confirms each action</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Medium</p> </td> 
+      <td class="No-Table-Style CellOverride-8"> <p class="_TableBody">Pair programming, cited research, document editing</p> </td> 
+      <td class="No-Table-Style CellOverride-9"> <p class="_TableBody">GitHub Copilot Chat, Cursor, Claude in Excel</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-9"> 
+      <td class="No-Table-Style CellOverride-10"> <p class="_TableBody">Agent</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Goal-level approval with gated high-stakes actions; the user sets the objective, and the agent decides the steps</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">High</p> </td> 
+      <td class="No-Table-Style CellOverride-11"> <p class="_TableBody">Multistep research, repo-wide refactors, browser automation</p> </td> 
+      <td class="No-Table-Style CellOverride-12"> <p class="_TableBody">Claude Code, OpenAI Operator, Devin</p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p25"> 
+   <p>Figure 1.2 shows a side-by-side comparison of the assistant and agent patterns. The key difference is where the human sits in the loop: the assistant requires per-step approval, while the agent operates against a higher-level goal.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p26">  
+   <img alt="" src="../Images/CH01_F02_Lanham4.png" style="width: 100%; max-width: max-content;" width="919" height="850"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.2 Top: An assistant performs one or more tasks on behalf of a user, with each task requiring the user’s approval. Bottom: An agent may use multiple tools autonomously, without human approval, to complete a goal.</span></h5>
+  </div> 
+  <div class="readable-text" id="p27"> 
+   <p>In the figure, the assistant (top) uses a single tool to call the weather service and answer a weather query, but first it asks the user for approval. By contrast, the user gives the agent (bottom) the ability to make decisions, reason, and plan to use tools to complete a higher-level goal. In this scenario, the user empowers the agent to select the appropriate tools for handling emails and notifications so it can identify and display the five most important emails.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p28"> 
+   <p>If you have ever used a ChatGPT tool such as web search, canvas, or GPT Assistant, then you have used an assistant. In this case, the LLM is aware of the available tools or assistant functions and can prepare to call them. Before calling a new external tool, the LLM pauses and asks for user approval. If approved, the tools are executed and the results are returned to the LLM. The LLM then reformulates the response in natural language and returns it to the user.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p29"> 
+   <p>In contrast, the agent interprets the user’s request or goal, and may then reason and construct a plan to identify further decision points. From there, it executes the steps in the plan and makes the required decisions independently. It may request user feedback after specific milestone tasks, but this agent has the power and ability to create and execute a plan to complete a goal. Agency empowers agents to accomplish complex goals, but care must be taken to prevent them from performing unknown actions.</p> 
+  </div> 
+  <div class="readable-text" id="p30"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.1.2</span> Thinking like agents: Sense-plan-act-learn</h3> 
+  </div> 
+  <div class="readable-text" id="p31"> 
+   <p>We use the term <em>agency</em> to describe an agent’s ability to make decisions and use tools to complete a goal. Internally, this means agents (LLMs) must be able to “reason” through the tasks needed to accomplish that goal. Table 1.2 provides three example goals: creating an image, traveling to Calgary, and buying a computer. It also lists the tasks performed for each goal and the tools used to carry out those tasks. </p> 
+  </div> 
+  <div class="browsable-container browsable-table-container" id="p32"> 
+   <h5 class=" browsable-container-h5">Table 1.2 Example goals, and the tasks and tools needed to carry them out</h5> 
+   <table> 
+    <colgroup> 
+     <col class="_idGenTableRowColumn-10"/> 
+     <col class="_idGenTableRowColumn-11"/> 
+     <col class="_idGenTableRowColumn-12"/> 
+    </colgroup> 
+    <tbody> 
+     <tr class="No-Table-Style _idGenTableRowColumn-13"> 
+      <td class="No-Table-Style CellOverride-13"> <p class="_TableHead">Goals</p> </td> 
+      <td class="No-Table-Style CellOverride-14"> <p class="_TableHead">Tasks</p> </td> 
+      <td class="No-Table-Style CellOverride-15"> <p class="_TableHead">Tools</p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-14"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Create an image</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> <p class="_TableBody">Create an image</p> </td> 
+      <td class="No-Table-Style CellOverride-18"> <p class="_TableBody"><code>create_image</code></p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-15"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Travel to Calgary (YYC)</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> <p class="_TableBody">Search for flights</p> <p class="_TableBody">Book flights</p> <p class="_TableBody">Book hotels</p> <p class="_TableBody">Book transportation</p> </td> 
+      <td class="No-Table-Style CellOverride-18"> <p class="_TableBody"><code>search_flights</code></p> <p class="_TableBody"><code>book_flights</code></p> <p class="_TableBody"><code>book_hotels</code></p> <p class="_TableBody"><code>book_transportation</code></p> </td> 
+     </tr> 
+     <tr class="No-Table-Style _idGenTableRowColumn-16"> 
+      <td class="No-Table-Style CellOverride-16"> <p class="_TableBody">Buy a computer</p> </td> 
+      <td class="No-Table-Style CellOverride-17"> <p class="_TableBody">Search for computers</p> <p class="_TableBody">Compare features and prices</p> <p class="_TableBody">Order a computer</p> </td> 
+      <td class="No-Table-Style CellOverride-18"> <p class="_TableBody"><code>web_search</code></p> <p class="_TableBody"><code>web_search</code></p> <p class="_TableBody"><code>order</code></p> </td> 
+     </tr> 
+    </tbody> 
+   </table> 
+  </div> 
+  <div class="readable-text" id="p33"> 
+   <p>Goals may be as simple as creating an image or as complex as booking travel or buying something. The tasks needed to complete a goal are broken down to the tool level, so each task involves executing a tool. Tools may be designed for specific tasks, such as creating images, or for more general uses, such as web search, which can support multiple tasks. Tool output may then become the input to the next tool call, a process called <em>tool chaining</em>.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p34"> 
+   <p>Agents receive a goal from the user or system and break it down into tasks. From there, the agent performs each task necessary to achieve the goal. Figure 1.3 illustrates an agent’s typical process for taking a goal from a user and completing tasks using tools. The process has four basic steps: sense, plan, act, and learn.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p35">  
+   <img alt="" src="../Images/CH01_F03_Lanham4.png" style="width: 100%; max-width: max-content;" width="889" height="723"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.3 The four-step process agents use to complete goals: sense (receive input, such as a goal or feedback) &gt; plan (define the tasks needed to complete the goal) &gt; act (execute the tool defined by the task) &gt; learn (observe the task output and determine whether the goal is complete or the process should continue)</span></h5>
+  </div> 
+  <div class="readable-text" id="p36"> 
+   <p>The sense-plan-act-learn (SPAL) cycle is an internal mechanism agents use to complete goals that require multiple task actions. Agency, including the ability to decide and plan powers this loop for agents. This loop is not new. It echoes well-­established ideas from classical AI and robotics, including the OODA loop (observe, orient, decide, act) from military strategy; BDI (belief, desire, intention) architectures from agent-based AI research; and the reactive planning and sense-plan-act robotics paradigms that preceded them. We adapt the pattern here for LLM-powered agents, where <em>sense</em> maps to input and context processing, <em>plan</em> to LLM reasoning, <em>act</em> to tool execution, and <em>learn</em> to output evaluation and memory updates.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p37"> 
+   <p>When configuring an agent, we typically provide it with the tools it needs to act and complete tasks. Then, When the agent is given a goal, it loads its instructions (prompt) and generates a plan internally. This plan specifies which tools to execute and how, along with which tool outputs may need to be chained. Then The agent then observes the results from the task and tools to determine whether the goal is complete, or the process needs to continue. If the goal is complete, the agent returns the results. This is a high-level overview of the process; some or all of these steps may be more complicated in practice.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p38"> 
+   <p>For earlier foundational LLMs (such as GPT-4), we had to use prompt-engineering techniques to get the model to reason step by step, create a plan, and execute the tasks in that plan. Today, most frontier models used to build agents include some capacity for reasoning and planning, often surfaced explicitly through a <em>thinking</em> or <em>reasoning</em> mode. The quality of that built-in reasoning varies considerably, though. Smaller models, older models, and models pushed outside their training distribution may reason shallowly or skip steps on complex multistep tasks, even when they nominally support a reasoning mode.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p39"> 
+   <p>Built-in reasoning reduces some of the need to inject reasoning through the instructions provided to the agent, but it does not eliminate that need. As we will see in chapter 4, you may still want to use reasoning patterns to improve, structure, and control agent reasoning, especially when the task is long-horizon or the underlying model is not a frontier reasoner. </p> 
+  </div> 
+  <div class="readable-text" id="p40"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.1.3</span> Agents act with tools</h3> 
+  </div> 
+  <div class="readable-text" id="p41"> 
+   <p>OpenAI and ChatGPT established a an early pattern for using LLM tools, and this pattern has been adapted for agents. An LLM or agent must be instructed on how to use tools, including how to define a tool’s inputs and handle its outputs. Tools themselves are extensions of functions, and we often refer to them as <em>tool functions</em>. Figure 1.4 illustrates how an agent can be configured to use and then invoke a tool function.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p42">  
+   <img alt="" src="../Images/CH01_F04_Lanham4.png" style="width: 100%; max-width: max-content;" width="881" height="500"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.4 To use a tool, an agent must first register that tool as a JSON description/definition. Once registered, the agent uses the tool through a process much like calling a function in Python.</span></h5>
+  </div> 
+  <div class="readable-text" id="p43"> 
+   <p>Tools often wrap around API calls, databases, external applications, or other resources. They allow the agent to act outside its own code and interact with external systems. Various agent frameworks let you register a tool by annotating the underlying function, such as with a Python decorator, a TypeScript decorator, or a configuration entry, depending on the framework, so the agent knows how and when to call it.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p44"> 
+   <p>Tools can also fail, and how an agent handles those failures is part of what separates a demo from a production system. APIs time out, databases return unexpected schemas, rate limits are hit, services go down, and arguments arrive malformed. A well-built agent treats tool failures as part of normal control flow rather than as crashes. It surfaces the error back to the model, lets the agent decide whether to retry, fall back, ask the user, or abandon the task, and limits the number of retries to avoid runaway loops. We will return to error handling, retries, and fallbacks when we build production agents in later chapters.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p45"> 
+   <p>Traditionally, agents and LLMs were restricted to the tools available within their codebases. This constraint became a problem early on because agent developers often spent more time building tools than developing agents. Consider an agent that needs to read your calendar, send a Slack message, query a Postgres database, and create a Jira ticket. Without a shared protocol, the developer must write and maintain four separate tool wrappers, keep up with four sets of API changes, and reimplement the same authentication, retry, and schema-handling logic each time. Multiply that work across a team building several agents, and most of the engineering time goes into tool plumbing rather than agent behavior.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p46"> 
+   <p>That has since changed. Protocols such as the Model Context Protocol (MCP) allow agents to interact with tools outside their codebase. Instead of rebuilding each integration in-house, agents can call out to dedicated tool servers maintained by the service provider or the community. The emergence of MCP represents a shift in how agents are built, moving from bespoke tool libraries embedded in each agent’s codebase to a standardized, discoverable ecosystem of external tool servers.</p> 
+  </div> 
+  <div class="readable-text" id="p47"> 
+   <h2 class=" readable-text-h2"><span class="num-string">1.2</span> Introducing the Model Context Protocol</h2> 
+  </div> 
+  <div class="readable-text" id="p48"> 
+   <p>MCP, developed at Anthropic and released in November 2024, is an open standard based on JSON-RPC 2.0. It is designed to let AI systems connect to external services consistently, securely, and efficiently. JSON-RPC 2.0 is a lightweight remote procedure call protocol that defines a standard message format for requests and responses. As a result, MCP tool calls follow a predictable, language-agnostic structure whether the server is written in Python, TypeScript, Go, or another language.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p49"> 
+   <p>Initially, MCP was promoted as an integration point between LLMs and tools, extending the pattern OpenAI had already established with ChatGPT, as discussed in the previous section. What separated MCP it from earlier work and established it as a pattern for LLMs was a simple, easy-to-adapt protocol that could wrap any codebase into a compact server. MCP fundamentally changes how we build AI systems.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p50"> 
+   <p>LLM and agent developers could thus use prebuilt MCP servers to easily integrate tools outside their codebases. When a prebuilt server already exists for the service they want to reach, they no longer have to concern themselves with building individual functions to act as tools or with interfaces, databases, and other connections. Instead, they can connect to the MCP server, discover all available tools, and use them seamlessly. When no prebuilt server exists, someone still has to build and maintain one that wraps the underlying capability. But that work happens once per integration rather than once per agent, and the resulting server can be reused or shared with the wider community.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p51"> 
+   <p>Figure 1.5 illustrates how agent–MCP interaction works in practice, shifting tool development from a per-agent burden to a shared, reusable layer.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p52">  
+   <img alt="" src="../Images/CH01_F05_Lanham4.png" style="width: 100%; max-width: max-content;" width="897" height="430"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.5 An agent connects to an MCP server to discover the tools it hosts and learn how to use them. When an MCP server is registered with an agent, the agent internally calls </span><span class=""><code>list_tools</code></span><span class=""> to find all the tools the server supports, along with their descriptions. Then, as with typical internal tool use, it can determine how best to use each tool tools based on its tool description.</span></h5>
+  </div> 
+  <div class="readable-text" id="p53"> 
+   <p>Connecting agents to MCP servers typically involves setting up and running the server, then registering it with the agent. From there, when the agent is assigned a task, it first calls <code>list_tools</code> on the server to get a list of available tools and descriptions. Internally, the agent then decides which tool to use, executes it, learns from the result, revises as needed, and collects the final results.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p54"> 
+   <p>Often referred to as the USB-C for LLMs and agents, MCP is designed to solve many of the problems developers frequently encounter when building LLM and agent applications:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p55"><em>Inconsistent tool acces</em><em>s</em><em>—</em>Although OpenAI created a standard for tool use, not all LLM providers follow that standard. Developers often need to adapt the JSON tool description for the underlying model. MCP abstracts all of that away.</li> 
+   <li class="readable-text" id="p56"><em>Unreliable data response</em><em>s</em><em>—</em>Using a standard protocol eliminates errors that can creep in when implementing and accessing multiple tools. With MCP, response formatting is standardized for easy consumption, which minimizes data errors.</li> 
+   <li class="readable-text" id="p57"><em>Fragmented integration</em><em>s</em><em>—</em>Hosting tool function code alongside agents/LLMs often meant writing code directly alongside the agent or creating separate modules or packages that could be consumed later. This often resulted in a mix of code that supported various tools, all of which had to be connected when running an agent.</li> 
+   <li class="readable-text" id="p58"><em>Code extensibilit</em><em>y</em><em>—</em>MCP provides a standard protocol for tool development in any language. This means developers are no longer constrained by Python or by the codebase their agents use.</li> 
+   <li class="readable-text" id="p59"><em>Implementation abstraction—</em>Developers no longer need to focus on the complexity of implementing tools. With the growth of MCP, thousands of open source servers are now available to provide tools for virtually any common use case.</li> 
+   <li class="readable-text" id="p60"><em>Easy to build—</em>MCP and other provieders offer numerous tools and packages (SDKs) for quickly building servers in different languages. If developers need to create their own tools, they can simply wrap them in MCP, making those tools accessible to most agent and LLM frameworks.</li> 
+   <li class="readable-text" id="p61"><em>Security and trust—</em>Connecting an agent to an MCP server exposes tool execution endpoints that the agent can call autonomously, making the server a privileged surface in the agent’s runtime. MCP supports authentication and authorization at the transport layer, and the protocol is designed for deployment with sandboxing, scoped credentials, and human-in-the-loop approval for high-stakes actions. Treat MCP servers as trusted dependencies: vet their source, pin versions, and run them with least privilege as part of building agents responsibly.</li> 
+  </ul> 
+  <div class="readable-text" id="p62"> 
+   <p>MCP has been a major driver in the adoption of AI agents because it enables seamless integration with a wide range of tools and resources. In chapter 3, we examine MCP extensively, from building servers to consuming them with agents. Tools and MCP servers are just one aspect of building agents. In the next section, we examine the fundamental layers that make up agents.</p> 
+  </div> 
+  <div class="readable-text" id="p63"> 
+   <h2 class=" readable-text-h2"><span class="num-string">1.3</span> Understanding the five functional layers of an agent</h2> 
+  </div> 
+  <div class="readable-text" id="p64"> 
+   <p>Agents can range from elementary entities used to complete simple tasks and goals to more complex entities capable of undertaking challenging, multistep goals. Adding functionality to an agent and enhancing its capabilities can be thought of as adding functional layers. The five primary functional layers of an agent are persona, tools and actions, reasoning and planning, knowledge and memory, and evaluation and feedback. These layers, shown in figure 1.6, will serve as the organizing principle for the first half of the book as we build our own agents.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p65">  
+   <img alt="" src="../Images/CH01_F06_Lanham4.png" style="width: 100%; max-width: max-content;" width="895" height="378"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.6 The five functional layers of agents: persona, tools and actions, reasoning and planning, knowledge and memory, and evaluation and feedback</span></h5>
+  </div> 
+  <div class="readable-text" id="p66"> 
+   <p>Each of these layers represents a progression in an agent’s capabilities. Not all agents require or benefit from every layers, and in some cases, specific layers may be omitted. In most cases, though, the core layers (persona, tools <span class="CharOverride-4">and</span> actions, and reasoning <span class="CharOverride-4">and </span>planning) are essential to all agents. It is also worth noting that these layers are not invoked in a fixed, top-to-bottom sequence. The core components interact continuously throughout the agentic loop: reasoning consults the persona to shape its choices, planning calls tools, tool results feed back into reasoning, and the persona constrains how the agent communicates the result. The layered diagram organizes capabilities on the page; it does not define a runtime call order.</p> 
+  </div> 
+  <div class="readable-text" id="p67"> 
+   <p>We will examine each of these layers in more detail in the following sections. As we progress through the book, we will explore each layer in greater depth in later chapters.</p> 
+  </div> 
+  <div class="readable-text" id="p68"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.3.1</span> The agent persona</h3> 
+  </div> 
+  <div class="readable-text" id="p69"> 
+   <p>The agent persona represents the base description and role. The persona, often referred to as the <em>system prompt</em>, guides an agent in completing tasks, learning how to respond, and understanding other nuances. It includes elements such as background or role (e.g., coder, writer) and may include contextual attributes such as expertise level, communication style, domain focus, and operating constraints. Personas can be generated through several methods, including handcrafting by a developer; LLM-assisted drafting, where one model writes or refines the persona for another; and data-driven techniques such as evolutionary algorithms. In research settings, evolutionary algorithms have been used to iteratively mutate and select agent personas based on performance metrics, effectively optimizing the persona through automated trial and error. Figure 1.7 shows the persona layer as the first layer of an agent.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p70">  
+   <img alt="" src="../Images/CH01_F07_Lanham4.png" style="width: 100%; max-width: max-content;" width="788" height="352"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.7 The persona layer is the core layer of an agent. It consists of the system instructions that define the agent’s role and how the agent should complete goals and tasks. It may include instructions for reasoning, planning, and acessing knowledge and memory.</span></h5>
+  </div> 
+  <div class="readable-text" id="p71"> 
+   <p>We will explore how to create effective, specific agent personas through techniques such as prompt engineering, reasoning and planning, and rubrics and grounding. We will also learn the differences between human-formulated and AI-formulated (LLM) personas.</p> 
+  </div> 
+  <div class="readable-text" id="p72"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.3.2</span> Agent tools and actions</h3> 
+  </div> 
+  <div class="readable-text" id="p73"> 
+   <p>The next essential layer for almost all agents is tools and actions. Tools help agents complete tasks toward an end goal and support activities in the higher layers of reasoning and planning, knowledge and memory, and evaluation and feedback. Figure 1.8 illustrates the tools and actions layer and its role in empowering an agent.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p74">  
+   <img alt="" src="../Images/CH01_F08_Lanham4.png" style="width: 100%; max-width: max-content;" width="914" height="423"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.8 The role of actions and tools within the agent and how tools can help power the other agent layers. Tools are a core extension of agents and fundamental to the functions used in the upper agent layers.</span></h5>
+  </div> 
+  <div class="readable-text" id="p75"> 
+   <p>Tools &amp; actions can be categorized into task completion, context retrieval, reasoning and planning, knowledge and memory, and feedback and evaluation, with varying levels of influence on the agent’s environment and internal states. Context retrieval tools fetch information the agent needs to ground its next decision, such as running a search, querying a vector store, reading a file, or calling a read-only API, without changing any external state. They are distinct from knowledge and memory tools, which read from and write to the agent’s own persistent stores, and from task completion tools, which take actions in the world. Tool use within an agent can be driven by planning, memory recollection, and evaluation and feedback mechanisms that shape the agent’s behavior and support learning.</p> 
+  </div> 
+  <div class="readable-text" id="p76"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.3.3</span> Agent reasoning and planning</h3> 
+  </div> 
+  <div class="readable-text" id="p77"> 
+   <p>Agents that use tools or execute actions need to be able to reason and plan. Current foundational models can often reason effectively on their own and provide reasoning traces. For most general applications, that built-in reasoning is enough. For more demanding agents, though, we want more control over how the agent reasons, including what it considers, in what order, and with what guardrails.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p78"> 
+   <p>A useful line of reasoning for deciding when model-native reasoning is sufficient versus when to layer on structured reasoning patterns follows:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p79">Model-native reasoning is usually enough when the task has a short horizon (one to three steps), the tool surface is small, the cost of a wrong action is low and reversible, and the model is a frontier reasoner used within its strong domains.</li> 
+   <li class="readable-text" id="p80">Structured reasoning augmentation pays off when any of the following apply: the task is long-horizon or branches into subgoals; the agent has access to many tools and must choose carefully among them; errors are expensive or irreversible, such as sending emails, moving money, or modifying production data); the domain is outside the model’s training strengths, you need the reasoning trace to be auditable or reproducible; or you are using a smaller or older model whose native reasoning is shallow. </li> 
+   <li class="readable-text" id="p81">Always layer reasoning on top of model-native reasoning when the task is safety-­critical or regulated. Built-in reasoning is opaque and varies between runs; structured patterns give you something you can inspect, test, and constrain.</li> 
+  </ul> 
+  <div class="readable-text" id="p82"> 
+   <p>Figure 1.9 illustrates the reasoning and planning layer and its role in controlling agents’ thought and planning processes. We cover specific reasoning patterns, including chain-of-thought, ReAct, Reflexion, and others, in chapter 5.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p83">  
+   <img alt="" src="../Images/CH01_F09_Lanham4.png" style="width: 100%; max-width: max-content;" width="900" height="509"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.9 Agent reasoning and planning, and how agentic thinking can be augmented. Reasoning can take many forms, from the underlying model that powers the agent to prompt engineering and the use of tools.</span></h5>
+  </div> 
+  <div class="readable-text" id="p84"> 
+   <p>Within planning, agents may use either single-path or multipath reasoning. In single-­path reasoning, the agent commits to one plan and works through each step in sequence without revisiting earlier decisions, even if a step fails or yields surprising results. This approach is fast and cheap but fragile when the task is uncertain. In multipath reasoning, the agent explores several candidate strategies in parallel or in sequence, evaluates them against the goal, and selects the most promising branch. It may also save efficient paths for future reuse. Tree-of-thought is a well-known example of this pattern. Multipath reasoning can produce better plans for hard tasks, but it incurs higher token and latency costs because the agent effectively plans several times before acting.</p> 
+  </div> 
+  <div class="readable-text" id="p85"> 
+   <p>External planners are separate systems, such as orchestration code, a workflow engine, or a dedicated planning agent, that coordinate the sequencing of an agent’s steps. In this arrangement, the planning logic lives outside the executing agent, which receives the next step to perform. Later chapters look at when to push planning out to an external system.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p86"> 
+   <p>In addition to developing essential skills for effective agent task execution and goal achievement, we will gain a clear understanding of fundamental planning approaches. We will also explore reasoning strategies, from single-path to multipath reasoning, that help optimize planning processes and consider multiple paths for efficient task completion.</p> 
+  </div> 
+  <div class="readable-text" id="p87"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.3.4</span> Agent knowledge and memory</h3> 
+  </div> 
+  <div class="readable-text" id="p88"> 
+   <p>Agents use knowledge and memory to annotate context with the most pertinent information while limiting the number of tokens. Knowledge and memory structures can be unified, with both subsets following a single structure, or hybrid, involving a mix of different retrieval forms. Formats vary widely, from source documents (such as PDFs) to relational, object, or document databases; graph databases; keyword search indexes; dense embeddings that enable semantic similarity search through vector representations; and even simple lists that serve as agent memories.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p89"> 
+   <p>The most common form of memory in practice is conversational memory: the running record of what the user and the agent have said to each other, along with the tools the agent has called along the way. Conversational memory is typically split into short-term memory and long term memory. Short-term memory holds the recent turns of the current session and lives directly in the model’s context window. Long-term memory persists across sessions and is retrieved selectively when relevant. Most production agents use both, layering long-term memory of user preferences, prior decisions, and ongoing projects on top of the short-term, turn-by-turn history.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p90"> 
+   <p>All of this is shaped by one hard constraint: the context window, the maximum number of tokens the model can attend to at once. Context window management is one of the most consequential architectural decisions in agent design. It governs how much conversation history you can keep before summarizing or evicting older turns, how much of a tool’s output you can feed back to the model instead of filtering or chunking it, how knowledge retrieval results are ranked and trimmed before insertion, and how multiple agents share state when coordinating on a task. Models with larger windows ease these pressures but do not eliminate them. Longer contexts cost more, slow inference, and can degrade reasoning quality past a certain length, so deciding what not to put in the window is as much a part of memory design as deciding what to retrieve. We return to memory architectures and context strategies in detail in later chapters.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p91"> 
+   <p>Knowledge and memory serve related but distinct functions in an agent. <em>Knowledge</em> is the static, external information the agent draws on to do its work, such as documents, manuals, knowledge base articles, schemas, code repositories, and other reference material that exists independently of any conversation. It is curated and updated on the timescale of the underlying source, such as when a new policy is published or a manual is revised, and is typically the same for every user of the agent.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p92"> 
+   <p><em>Memory</em>, in contrast, is the dynamic, experiential information the agent builds through interaction. It may come from the running conversation, the user’s stated preferences, decisions made in past sessions, or observations the agent has recorded about its own behavior. Memory is updated continuously during use and is typically scoped to a specific user, tenant, or session. The two are usually stored and retrieved differently as well: knowledge tends to live in vector stores, search indexes, or graph databases optimized for breadth and recall, while memory tends to live in session stores, key-value caches, or per-user databases optimized for recency and relevance to the current actor.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p93"> 
+   <p>Both knowledge and memory are surfaced to the agent through a well-established pattern called <em>retrieval-augmented generation</em> (RAG). With RAG, an agent retrieves the most pertinent information from these sources at decision time and augments its context with that information. RAG was originally formulated for static knowledge retrieval, but the same retrieve-then-generate pattern now underpins memory systems, hybrid knowledge-and-memory stacks, and tool-mediated lookups across both. Figure 1.10 highlights the role of the knowledge and memory layer within agents.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p94">  
+   <img alt="" src="../Images/CH01_F10_Lanham4.png" style="width: 100%; max-width: max-content;" width="902" height="538"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.10 The knowledge and memory layer uses common forms of storage across both knowledge and memory. Agent knowledge represents information the LLM was not initially trained on but is later given. Likewise, Memories represent past experiences and interactions of the user, agent, or other systems.</span> </h5>
+  </div> 
+  <div class="readable-text" id="p95"> 
+   <p>We will learn how to optimize information management within agents. We will explore semantic embedding structures and how they can adapt to the specific needs of agents, whether unified or hybrid. We will also use diverse data sources for knowledge, ranging from language-based documents to different database types, and semantic similarity matching of word and ­document embeddings. Finally, we will examine how hybrid structures can improve both memory and knowledge retrieval in agents.</p> 
+  </div> 
+  <div class="readable-text" id="p96"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.3.5</span> Agent evaluation and feedback</h3> 
+  </div> 
+  <div class="readable-text" id="p97"> 
+   <p>The evaluation and feedback layer represents external mechanisms that help agents provide more robust and accurate responses. A common implementation is the <em>LLM-as-judge</em> pattern, where a separate model scores or critiques the agent’s output against a rubric before returning it to the user. Internally, agents use evaluation and feedback during the learn phase of the agent process loop. In this phase, an agent assesses the results of an action or tool and generates internal feedback to continue or modify a goal-execution plan. Figure 1.11 illustrates how evaluation and feedback can be implemented as a final hardening layer for agents. </p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p98">  
+   <img alt="" src="../Images/CH01_F11_Lanham4.png" style="width: 100%; max-width: max-content;" width="903" height="505"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.11 The evaluation and feedback layer and the mechanisms used to provide it, including tools that evaluate tool use and knowledge retrieval (grounding), provide feedback to other agents and support workflows with similar functionality</span></h5>
+  </div> 
+  <div class="readable-text" id="p99"> 
+   <p>The mechanisms we employ for evaluation and feedback within an agent system vary depending on the use case and desired solutions. These mechanisms may take the form of tools that an agent can call on, other agents acting as tools or handoffs, guardrails on inputs and outputs, or a dedicated critic (sometimes called an evaluator) running alongside the primary agent in an actor-critic arrangement. In this arrangement, the actor produces a candidate response or plan and the critic scores or revises it before the agent commits. There are even explicit agent workflow forms that encourage evaluation and feedback, as we will see in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p100"> 
+   <h2 class=" readable-text-h2"><span class="num-string">1.4</span> Advancing to multi-agent systems</h2> 
+  </div> 
+  <div class="readable-text" id="p101"> 
+   <p>Individual agents can perform many tasks to achieve multiple goals. But single-agent systems run into limits as problems grow in scale and scope, and multi-agent systems exist for several distinct reasons: </p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p102"><em>Specialization—</em>A single agent loaded with every tool, domain, and instruction tends to perform worse than several focused agents that each do one thing well. Splitting a customer support agent into a triage agent, a billing agent, and a technical support agent typically yields better outcomes than having one agent handle all three.</li> 
+   <li class="readable-text" id="p103"><em>Parallelis</em><em>m</em><strong>—</strong>Some workloads are naturally concurrent: researching ten companies, reviewing twenty pull requests, or processing a batch of documents. A multi-agent system can fan out and finish in a fraction of the wall-clock time a single agent would need to work sequentially.</li> 
+   <li class="readable-text" id="p104"><em>Context managemen</em><em>t</em><strong>—</strong>Each agent has a finite context window. Distributing a problem across several agents, with each holding only the slice it needs, enables the system to tackle problems that would not fit within any single agent’s context.</li> 
+   <li class="readable-text" id="p105"><em>Inherently multi-agent problem</em><em>s</em><strong>—</strong>Some applications are multi-agent by definition. Social simulations, market and negotiation models, adversarial red team and blue team setups, and scenarios that require multiple independent actors with distinct goals cannot be modeled with a single agent.</li> 
+  </ul> 
+  <div class="readable-text" id="p106"> 
+   <p>Multi-agent systems extend agents’ power and capability, helping automate and solve problems that single agents cannot. In the next section, we begin to exploring the first and most common pattern for connecting agents.</p> 
+  </div> 
+  <div class="readable-text" id="p107"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.4.1</span> The agent flow assembly line</h3> 
+  </div> 
+  <div class="readable-text" id="p108"> 
+   <p>Multiple agents can be configured to work together in several ways. The collaboration pattern you choose for depends on your use case. Figure 1.12 shows the agent flow (assembly line) pattern for building a multi-agent system.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p109">  
+   <img alt="" src="../Images/CH01_F12_Lanham4.png" style="width: 100%; max-width: max-content;" width="918" height="431"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.12 The agent-flow pattern of assembly with multiple agents. The flow starts with a planning agent that breaks down the goal into a high-level plan, which it then passes to the research agent. The research agent may execute the research tasks in the plan, then passes the plan to the content agent, which completes the later tasks, such as writing a paper based on the research.</span></h5>
+  </div> 
+  <div class="readable-text" id="p110"> 
+   <p>In the agent flow pattern, agents are arranged like an assembly line. Each agent represents a specialized worker with unique access to tools and resources. Agents coordinate in one of three ways:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p111"><em>Threade</em><em>d</em>—They may share a common conversation thread that every agent reads from and writes to. This preserves the full context, but it grows quickly and can confuse downstream agents with irrelevant details.</li> 
+   <li class="readable-text" id="p112"><em>Blackboar</em><em>d</em><em>—</em>Agents may share a blackboard, a structured workspace where they post intermediate results under named keys. This keeps context organized and selectively readable but requires the team to agree on the schema up front.</li> 
+   <li class="readable-text" id="p113"><em>Chaine</em><em>d</em>—Or they may pass output only from one agent to the next, much like an assembly line. This pattern is the simplest to implement and reason about, but it discards everything the receiving agent does not explicitly need.</li> 
+  </ul> 
+  <div class="readable-text" id="p114"> 
+   <p>The right choice depends on how much shared context the downstream agents actually need. More context is not always better, and the assembly line form is often the right default until you see evidence that agents need to look further upstream.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p115"> 
+   <p>The agent flow pattern is the simplest to implement and control. It is often used to automate well-defined, multistep tasks with designated roles. Single-agent systems that struggle to complete a chain of work are ideal candidates for the agent flow pattern.</p> 
+  </div> 
+  <div class="readable-text" id="p116"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.4.2</span> Agent orchestrations (hub-and-spoke)</h3> 
+  </div> 
+  <div class="readable-text" id="p117"> 
+   <p>Agent orchestrations, often called hub-and-spoke, are a good upgrade when a single agent becomes overloaded or needs to handle multiple goals. These agents are usually interactive and may resemble assistants. Figure 1.13 shows a typical agent orchestration pattern for handling numerous goals.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p118">  
+   <img alt="" src="../Images/CH01_F13_Lanham4.png" style="width: 100%; max-width: max-content;" width="893" height="559"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.13 The agent orchestration pattern, often called hub-and-spoke. A central agent acts as the hub, or orchestrator, delegating tasks to worker agents. The worker agents complete their tasks and return the results to the hub, which determines when the goal is complete and outputs the results.</span> </h5>
+  </div> 
+  <div class="readable-text" id="p119"> 
+   <p>In the orchestration agent pattern, the primary agent is often responsible for planning and coordinating with the other agents. The orchestrator delegates tasks to specialized worker agents, much like using tools. Each specialized agent may perform multiple tasks to complete subgoals and, internally, may also perform planning as required.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p120"> 
+   <p>The benefit of this pattern is that you can control all input and output through a single agent. It is also easy to transform a single agent that uses tools into an orchestrator that uses worker agents as tools. Each worker agent, in turn, specializes in a set of tools.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p121"> 
+   <p>A drawback of this pattern is that worker agents are often tightly restricted and cannot provide feedback, evaluation, or other forms of collaboration. Some variations employ agents as observers and critics, but these agents are still limited to communication through delegation. As we will see in the next section, agent collaboration is a powerful counterpart that can overcome these limitations.</p> 
+  </div> 
+  <div class="readable-text" id="p122"> 
+   <h3 class=" readable-text-h3"><span class="num-string">1.4.3</span> Agent collaboration (teams of agents)</h3> 
+  </div> 
+  <div class="readable-text" id="p123"> 
+   <p>Early approaches to building multi-agent systems used the concept of an agent team. Each agent took on a role within the team and helped solve a complex problem. Figure 1.14 shows an example of a collaborative multi-agent team.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p124">  
+   <img alt="" src="../Images/CH01_F14_Lanham4.png" style="width: 100%; max-width: max-content;" width="889" height="552"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 1.14 A team of collaborative agents. The agent collaboration pattern lets agents interact as peers, with back-and-forth communication between them. In some cases, a manager agent may act as a user proxy and help keep the collaborating agents on track.</span></h5>
+  </div> 
+  <div class="readable-text" id="p125"> 
+   <p>In the collaboration pattern, agents typically communicate with each other or with a set of specific counterpart agents. As in the previous patterns, each agent role has access to a particular set of tools for working within that role. Unlike in previous patterns, agents not only use tools but within their roles may also have a specific function within the team.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p126"> 
+   <p>Within the figure’s example team, the QA agent may validate that the code works according to the product’s requirements. It may also go further and critique the code’s structure and other factors. Likewise, the product agent may build requirements while also validating that requirements have been completed to specification.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p127"> 
+   <p>The benefit of building collaboration agent systems is that they can solve very complex tasks over time and are relatively easy to envision. But the disadvantage is that such systems are chatty and repetitive, making them much less efficient at achieving goals and potentially overly costly. Cost is worth flagging as a first-class concern more broadly: every pattern in this section trades latency, token spend, and operational complexity against capability. The right pattern for a given problem is usually the <em>cheapest</em> one that meets the requirement, not the most powerful. We return to cost and efficiency tradeoffs when we evaluate patterns in production later in the book.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p128"> 
+   <p>We typically use this pattern only when solving complex problems that would not otherwise be solvable. Agent collaboration has been shown to generate new thoughts and ideas. Advanced patterns of collaborative agents have even used evolutionary algorithms to further extend the ability to create new concepts.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p129"> 
+   <p>You can also mix and match these patterns to create complex multi-agent systems. This book focuses primarily on the OpenAI Agents SDK, which handles agent flow and agent orchestration patterns well. </p> 
+  </div> 
+  <div class="readable-text" id="p130"> 
+   <h2 class=" readable-text-h2"><span class="num-string">1.5</span> Next steps</h2> 
+  </div> 
+  <div class="readable-text" id="p131"> 
+   <p>The journey ahead is organized around the five agent layers: persona, tools and actions, reasoning and planning, knowledge and memory, and evaluation and feedback. We use these five layers to understand, build, and design every agent we work on in the book. Each layer gets its own dedicated chapter with code you can run and modify. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p132"> 
+   <p>Before we work through the layers in depth, we cover two topics essential to modern agent development: the Model Context Protocol (MCP) and multi-agent systems. MCP changed how agents connect to tools and data, and multi-agent coordination is now expected for anything beyond a toy demo. Introducing these topics early lets the layer chapters build on a realistic foundation rather than a stripped-down sandbox.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p133"> 
+   <p>Once you have the five layers under your belt, we move from single agents to multi-agent systems and real-world distributed agentic systems. This is where individual agents become coordinated infrastructure: how messages flow between agents, how state is managed across processes, and how failures are handled.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p134"> 
+   <p>From there, we move into more advanced territory. We dig into the agentic loop, the mechanism that powers deep research agents and any system that needs to plan, act, observe, and revise over long horizons. We then explore next-generation agentic systems that add a metacognitive layer for internal self-improvement: agents that monitor and correct their own reasoning rather than relying purely on the underlying model.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p135"> 
+   <p>The final chapter brings everything together by walking through common, real-world production agent systems: a customer support (help desk) agent, a deep research agent, and a RAG agent. By then, you will have the vocabulary and pattern recognition to read each system as a specific configuration of layers, loops, and coordination strategies you have already built yourself.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p136"> 
+   <p>As noted, this book is not a production operations manual, so we touch only briefly on enterprise-level decisions about security, governance, compliance, and scaling. After learning to build agents here, readers interested in production-grade systems may want to look at current resources, videos, and blogs, which they can find through their favorite AI-powered search engine.</p> 
+  </div> 
+  <div class="readable-text" id="p137"> 
+   <h2 class=" readable-text-h2">Summary</h2> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p138">An AI agent has agency: the ability to make decisions, perform tasks, and act autonomously on behalf of someone or something. AI agents are powered by large language models connected to tools, memory, and planning capabilities.</li> 
+   <li class="readable-text" id="p139">An agent’s agency gives it the ability to process information through an autonomous loop called the sense, plan, act, learn process.</li> 
+   <li class="readable-text" id="p140">Assistants use tools to perform single tasks with user approval, whereas agents can reason, plan, and execute multiple tasks independently to achieve higher-level goals.</li> 
+   <li class="readable-text" id="p141">The four patterns we see for LLM use are direct user interaction with LLMs, assistant proxy (reformulating requests), assistant (tool use with approval), and autonomous agent (independent planning and execution).</li> 
+   <li class="readable-text" id="p142">Agents receive goals, load instructions, reason through plans, identify the required tools, execute steps in sequence, and return results, all while making autonomous decisions.</li> 
+   <li class="readable-text" id="p143">Agents use actions, or tool functions (extensions that wrap API calls, databases, and external resources) to act beyond their codebase and interact with external systems. </li> 
+   <li class="readable-text" id="p144">Model Context Protocol (MCP), developed by Anthropic in November 2024, serves as the “USB-C for LLMs,” providing a standardized protocol that allows agents to connect to MCP servers, discover available tools, and use them without custom integration code.</li> 
+   <li class="readable-text" id="p145">MCP addresses inconsistent tool access, unreliable data responses, fragmented integrations, code-extensibility limitations, and implementation complexity. It also provides easy-to-build standardized servers.</li> 
+   <li class="readable-text" id="p146">AI agent development can be expressed in terms of five functional layers: persona, tools and actions, reasoning and planning, knowledge and memory, and evaluation and feedback.</li> 
+   <li class="readable-text" id="p147">The persona layer represents the core role, personality, and instructions an agent uses to complete goals and tasks.</li> 
+   <li class="readable-text" id="p148">The tools and actions layer gives the agent the functionality to interact with and manipulate the external world.</li> 
+   <li class="readable-text" id="p149">The reasoning and planning layer helps an agent reason through and plan for complex goals that may require trial-and-error iteration.</li> 
+   <li class="readable-text" id="p150">The knowledge and memory layer represents external information sources that can augment the agent’s context with external knowledge or connect it to past experiences (memories) from previous interactions.</li> 
+   <li class="readable-text" id="p151">The evaluation and feedback layer represents external agent mechanisms that can help improve response accuracy, encourage goal and task learning, and increase confidence in the agent’s overall output.</li> 
+   <li class="readable-text" id="p152">Multi-agent systems include patterns such as agent flow assembly lines (sequential specialized workers), agent orchestration hub-and-spoke systems (central coordinators with specialized workers), and agent collaboration teams (agents communicating and working together with defined roles).</li> 
+   <li class="readable-text" id="p153">The agent flow pattern (sequential assembly line) is the most straightforward multi-agent implementation. In this pattern, specialized agents work sequentially like an assembly line, which makes the pattern ideal for well-defined, multistep tasks with designated roles.</li> 
+   <li class="readable-text" id="p154">The agent orchestration pattern uses a hub-and-spoke model in which a primary agent plans and coordinates with specialized worker agents, transforming single-agent tool use into multi-agent delegation.</li> 
+   <li class="readable-text" id="p155">The agent collaboration pattern represents agents working as a team. Agents communicate with each other, provide feedback and criticism, and can solve complex problems through collective intelligence, though with higher computation costs and latency.</li> 
+   <li class="readable-text" id="p156">AI agents mark a shift from traditional programming to natural language–based interfaces, enabling complex workflow automation from prompt engineering to production-ready agent architecture.</li> 
+  </ul>
+ </div></div></body></html>

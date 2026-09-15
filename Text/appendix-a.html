@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-merged">appendix A</span>  Setting up the sample code repository</h1> 
+  </div> 
+  <div class="readable-text" id="p2"> 
+   <p>The companion repository for this book hosts the sample code that accompanies the chapters. It demonstrates how to build and run an AI agent using OpenAI’s tools and APIs, and it is organized so that each chapter’s examples live in a separate folder. Before you can work through the listings in the chapters, you need a working copy of the repository on your machine, a Python environment that matches what the samples expect, and a valid OpenAI API key connected through a local environment file.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p3"> 
+   <p>This appendix walks through that setup end to end. It is organized into four sections that follow the natural setup order: cloning the repository, creating a Python environment, installing the dependencies and configuring your API key, and finally running one of the sample agents to confirm that everything is wired up correctly. Follow the sections in order the first time through; on subsequent visits, you can skip ahead to whichever step you need.</p> 
+  </div> 
+  <div class="readable-text" id="p4"> 
+   <h2 class=" readable-text-h2"><span class="num-string">A.1</span> Cloning the repository</h2> 
+  </div> 
+  <div class="readable-text" id="p5"> 
+   <p>To get started, clone the repository to your local machine. The repository is hosted on GitHub and can be retrieved with a standard <code>git clone</code> command. Open a terminal, change to the directory where you keep your projects, and run the following commands:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p6"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">git clone https://github.com/cxbxmxcx/AI-Agent-Workflows.git
+cd AI-Agent-Workflows</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p7"> 
+   <p>The first command downloads a full copy of the repository into a new AI-Agent-­Workflows folder. The second command moves you into that folder so that the remaining setup steps run in the right place.</p> 
+  </div> 
+  <div class="readable-text" id="p8"> 
+   <h2 class=" readable-text-h2"><span class="num-string">A.2</span> Creating a Python environment</h2> 
+  </div> 
+  <div class="readable-text" id="p9"> 
+   <p>The project requires Python 3.11 or later. The recommended approach is to create a dedicated virtual environment for the repository so that its dependencies do not interfere with other Python projects on your machine. The exact commands depend on your operating system, so the following paragraphs split the instructions for Windows and macOS or Linux.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p10"> 
+   <p>On Windows, from a command prompt or PowerShell window in the repository root, run</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p11"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">python -m venv venv
+venv\Scripts\activate</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p12"> 
+   <p>On macOS or Linux, from a terminal in the repository root, run</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p13"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">python3 -m venv venv
+source venv/bin/activate</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p14"> 
+   <p>On either platform, once the environment is activated, your shell prompt is prefixed with <code>(venv)</code>, which confirms that subsequent <code>python</code> and <code>pip</code> commands run inside the virtual environment.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p15"> 
+   <p>If you prefer to use an existing Python installation instead of the virtual environment created earlier, you can point VS Code to that interpreter. To do so, follow these steps:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p16">Open the Command Palette by pressing Ctrl-Shift-P on Windows or Linux, or Cmd-Shift-P on macOS.</li> 
+   <li class="readable-text" id="p17">Search for Python: Select Interpreter.</li> 
+   <li class="readable-text" id="p18">Choose the Python interpreter you want to use for this project.</li> 
+  </ol> 
+  <div class="readable-text" id="p19"> 
+   <h2 class=" readable-text-h2"><span class="num-string">A.3</span> Installing dependencies and configuring the environment</h2> 
+  </div> 
+  <div class="readable-text" id="p20"> 
+   <p>With a working Python environment in place, the next step is to install the packages the samples depend on and give them access to your OpenAI API key. The repository pins its dependencies in a requirements.txt file at the repository root and reads your API key from a local .env file. This section covers the two installation paths and the API key configuration in turn.</p> 
+  </div> 
+  <div class="readable-text" id="p21"> 
+   <h3 class=" readable-text-h3"><span class="num-string">A.3.1</span> Path A: Using the VS Code debugger</h3> 
+  </div> 
+  <div class="readable-text" id="p22"> 
+   <p>If you have VS Code installed with the Python extension, you can press F5 to start debugging one of the sample files. The launch configuration shipped with the repository ensures that the required dependencies are installed automatically before the sample runs. This is the fastest path if you do not want to manage dependencies by hand.</p> 
+  </div> 
+  <div class="readable-text" id="p23"> 
+   <h3 class=" readable-text-h3"><span class="num-string">A.3.2</span> Path B: Installing manually with pip</h3> 
+  </div> 
+  <div class="readable-text" id="p24"> 
+   <p>If you prefer to install the dependencies yourself, or if you are running the samples from a plain terminal, run the following command from the repository root with your virtual environment activated:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p25"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">pip install -r requirements.txt</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p26"> 
+   <p><code>pip</code> downloads each pinned package and installs it into the active virtual environment. Depending on your network connection, this can take a minute or two the first time.</p> 
+  </div> 
+  <div class="readable-text" id="p27"> 
+   <h3 class=" readable-text-h3"><span class="num-string">A.3.3</span> Configuring the OpenAI API key</h3> 
+  </div> 
+  <div class="readable-text" id="p28"> 
+   <p>The samples authenticate to OpenAI using an API key read from an .env file in the repository root. The repository includes an .env.example file that you can copy as a starting point. Create a new file named .env in the repository root with the following contents:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p29"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">OPENAI_API_KEY=your_openai_api_key_here</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p30"> 
+   <p>Replace <code>your_openai_api_key_here</code> with your actual OpenAI API key. You can obtain a key from the OpenAI API Keys page at <a href="https://platform.openai.com/account/api-keys"><span class="Hyperlink">https:</span><span class="Hyperlink">/</span><span class="Hyperlink">/platform.openai.com/account/api-keys</span></a>.</p> 
+  </div> 
+  <div class="readable-text print-book-callout" id="p31"> 
+   <p><span class="print-book-callout-head">WARNING</span> Never share or commit your .env file to version control. It contains a secret credential that grants access to your OpenAI account, and anyone who obtains it can incur charges to your account.</p> 
+  </div> 
+  <div class="readable-text" id="p32"> 
+   <h2 class=" readable-text-h2"><span class="num-string">A.4</span> Running the sample code</h2> 
+  </div> 
+  <div class="readable-text" id="p33"> 
+   <p>With the repository cloned, the virtual environment active, the dependencies installed, and your API key in place, you are ready to run one of the samples. This section shows you how to run a sample, deal with the most common problems you might encounter, and adopt a few small habits that will keep your setup healthy over the course of the book.</p> 
+  </div> 
+  <div class="readable-text" id="p34"> 
+   <h3 class=" readable-text-h3"><span class="num-string">A.4.1</span> Running a sample</h3> 
+  </div> 
+  <div class="readable-text" id="p35"> 
+   <p>Each chapter’s code lives in its own folder under the repository root. To run a sample, navigate to the chapter folder and execute the Python file. For example, to run the first agent from chapter 2:</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p36"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">python chapter_02/01_first_agent.py</pre>  
+   </div> 
+  </div> 
+  <div class="readable-text" id="p37"> 
+   <p>The agent runs to completion and prints its output to the terminal. You can follow the same pattern for any other sample in the repository by replacing the path with the chapter and file you want to run.</p> 
+  </div> 
+  <div class="readable-text" id="p38"> 
+   <h3 class=" readable-text-h3"><span class="num-string">A.4.2</span> Troubleshooting common problems</h3> 
+  </div> 
+  <div class="readable-text" id="p39"> 
+   <p>Most setup problems come down to one of two root causes: a missing or incorrect API key, or the wrong active Python interpreter. The following two patterns cover almost everything you are likely to see:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p40">If you see an authentication error, double-check that your .env file is in the repository root and that <code>OPENAI_API_KEY</code> is set to a valid key.</li> 
+   <li class="readable-text" id="p41">If you see a <code>ModuleNotFoundError</code>, confirm that your virtual environment is active and that the dependencies were installed against it.</li> 
+  </ul> 
+  <div class="readable-text" id="p42"> 
+   <h3 class=" readable-text-h3"><span class="num-string">A.4.3</span> Keeping your setup healthy</h3> 
+  </div> 
+  <div class="readable-text" id="p43"> 
+   <p>A few small habits will save you time as you work through the rest of the book:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p44">Make sure the Python interpreter you are using actually matches the environment you set up. Mixing system Python with a project virtual environment is the most common cause of import errors.</li> 
+   <li class="readable-text" id="p45">The .env file is listed in .gitignore and should never be committed to version control. Keep it local to your machine to keep your API key secure.</li> 
+   <li class="readable-text" id="p46">If you rotate your OpenAI API key for any reason, update the value in .env before running the samples again.</li> 
+  </ul>
+ </div></div></body></html>

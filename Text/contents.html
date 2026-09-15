@@ -1,0 +1,733 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text">
+   <h1>contents</h1>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/preface.html"><em>preface</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/acknowledgments.html"><em>acknowledgments</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/about-this-book.html"><em>about this book</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/about-the-author.html"><em>about the author</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/about-the-cover-illustration.html"><em>about the cover illustration</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-1.html"><em>1 The rise of AI agents</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-1.html#p11">1.1 Defining agents and agentic thinking</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p17">1.1.1 Understanding agent, assistant, and LLM patterns</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p30">1.1.2 Thinking like agents: Sense-plan-act-learn</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p40">1.1.3 Agents act with tools</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-1.html#p47">1.2 Introducing the Model Context Protocol</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-1.html#p63">1.3 Understanding the five functional layers of an agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p68">1.3.1 The agent persona</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p72">1.3.2 Agent tools and actions</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p76">1.3.3 Agent reasoning and planning</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p87">1.3.4 Agent knowledge and memory</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p96">1.3.5 Agent evaluation and feedback</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-1.html#p100">1.4 Advancing to multi-agent systems</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p107">1.4.1 The agent flow assembly line</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p116">1.4.2 Agent orchestrations (hub-and-spoke)</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-1.html#p122">1.4.3 Agent collaboration (teams of agents)</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-1.html#p130">1.5 Next steps</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-2.html"><em>2 Core components: Large language models, prompting, and agents</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-2.html#p7">2.1 Understanding large language models</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p10">2.1.1 LLMs: Probabilistic token machines</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p20">2.1.2 What is a token?</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p29">2.1.3 Tuning temperature, top-p, and more</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-2.html#p38">2.2 Controlling LLMs with prompt engineering (agent persona)</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p40">2.2.1 Applying core prompt techniques</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p49">2.2.2 Thinking like an LLM</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p58">2.2.3 Avoiding common prompt pitfalls</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-2.html#p63">2.3 Building an agent with OpenAI Agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p66">2.3.1 Building a minimal agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p72">2.3.2 Setting the agent model and other parameters</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p80">2.3.3 Controlling inputs and typed outputs</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p97">2.3.4 Tracing agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-2.html#p108">2.4 Enhancing agents through tool integration</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p111">2.4.1 Providing agents with tools</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-2.html#p126">2.4.2 Tracing agentic tool use</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-2.html#p137">2.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-3.html"><em>3 Actions with Model Context Protocol for AI agents</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-3.html#p9">3.1 Understanding MCP fundamentals for agent development</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p11">3.1.1 The standardization problem MCP solves</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p20">3.1.2 MCP architecture: Clients, servers, and services</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p35">3.1.3 Core components: Tools, resources, and prompts</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p44">3.1.4 MCP deployment patterns for agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p55">3.1.5 MCP powers the functional agent layers</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-3.html#p64">3.2 Getting started with MCP servers</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p71">3.2.1 Coding up an MCP server for Claude</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p86">3.2.2 Using the MCP inspector</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p93">3.2.3 Understanding MCP transport types</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p97">3.2.4 From desktop to agents: The key differences</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-3.html#p111">3.3 Using MCP servers for agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p121">3.3.1 Using agents with local MCP servers over STDIO</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p127">3.3.2 Using local MCP servers over SSE with agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p134">3.3.3 Connecting to the standard MCP servers</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-3.html#p143">3.4 Building MCP servers for agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p152">3.4.1 Converting tools to an MCP server</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-3.html#p161">3.4.2 Consuming MCP servers locally or remotely</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-3.html#p171">3.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-4.html"><em>4 Architecting and building multi-agent systems</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-4.html#p9">4.1 Architecting multi-agent systems</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p21">4.1.1 Decision-making and control patterns</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p27">4.1.2 Communicating with shared memory, message passing, and MCP</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p39">4.1.3 Channeling multi-agent coordination strategies</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-4.html#p103">4.2 Balancing agents with agentic flows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p105">4.2.1 Transforming agents to agent flows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p117">4.2.2 Building an agent-to-agent flow</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p123">4.2.3 Agency and decision-making in agent flows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-4.html#p137">4.3 Understanding handoffs in agent flows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p144">4.3.1 Agent-to-agent flow with handoffs</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p148">4.3.2 Visualizing agent flows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p156">4.3.3 Monitoring the handoff</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-4.html#p160">4.4 Validating agent flows with guardrails</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p167">4.4.1 Implementing input and output guardrails</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p176">4.4.2 Using agents as guardrails</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-4.html#p181">4.4.3 Adding guardrails for pass-off agent flows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-4.html#p202">4.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-5.html"><em>5 Agent reasoning and planning</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-5.html#p9">5.1 Understanding LLM reasoning and planning</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p26">5.1.1 Chain-of-thought reasoning</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p45">5.1.2 Reasoning, acting, observing: The ReAct paradigm</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p53">5.1.3 Planning with LLMs</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-5.html#p65">5.2 Instructing agents to reason and plan</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p67">5.2.1 Applying CoT to an agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p71">5.2.2 Implementing ReAct with agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-5.html#p76">5.3 Advanced reasoning patterns with agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p79">5.3.1 Tree-of-thought</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p93">5.3.2 Reflexion</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p103">5.3.3 Selecting the right pattern for your agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-5.html#p107">5.4 Utilizing the sequential thinking MCP server</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p110">5.4.1 Unchaining the sequential thinking server</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p117">5.4.2 Revisiting time travel problems with sequential thinking</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-5.html#p125">5.4.3 Advanced reasoning with sequential thinking</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-5.html#p133">5.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-6.html"><em>6 Working with memory and knowledge RAG for agents</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-6.html#p9">6.1 Understanding retrieval in AI applications</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p20">6.1.1 The basics of RAG</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p35">6.1.2 Delving into semantic search and document indexing</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p42">6.1.3 Applying vector similarity search</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-6.html#p84">6.2 Vector databases and similarity search</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p89">6.2.1 Demystifying document embeddings</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p103">6.2.2 Querying document embeddings from Chroma DB</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-6.html#p110">6.3 Building practical RAG knowledge agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p112">6.3.1 Everything begins with search and relevance</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p119">6.3.2 Building a vector search RAG agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p132">6.3.3 Building a hybrid search RAG agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-6.html#p144">6.4 Adding memory to agents with MCP</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p146">6.4.1 Understanding memory form and agent function</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p163">6.4.2 Attaching a graph database for memory using MCP</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p174">6.4.3 Creating hybrid memory systems with MCP</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p188">6.4.4 Semantic augmented memory and applications to semantic, episodic, and procedural memory</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-6.html#p193">6.4.5 Uncluttering memory with compression and forgetting</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-6.html#p214">6.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-7.html"><em>7 Building robust agents with evaluation and feedback</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-7.html#p9">7.1 Introducing agent evaluation and feedback</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-7.html#p26">7.2 Implementing test-driven agent development</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p44">7.2.1 Exploring TDAD in practice</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p48">7.2.2 Coding and testing the RAG agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p54">7.2.3 Refactoring the agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p76">7.2.4 Extending evaluation with an agent evaluator</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-7.html#p83">7.3 Employing grounding, critic, and evaluation agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p91">7.3.1 Reviewing the grounding agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p95">7.3.2 Grounding the RAG agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p101">7.3.3 Implementing grounding agents as guardrails</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p108">7.3.4 Understanding the role of rubrics in evaluation</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p128">7.3.5 Building a rubric critic agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-7.html#p154">7.4 Phoenix for evaluation and feedback</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p161">7.4.1 Connecting to Phoenix</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p169">7.4.2 Adding metadata and session tracking</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p175">7.4.3 Experimenting with evaluators</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-7.html#p181">7.4.4 Providing feedback with annotations</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-7.html#p190">7.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-8.html"><em>8 Deploying agents and agentic systems</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-8.html#p8">8.1 Strategies for consuming agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p22">8.1.1 Embedding real-time voice agents into web applications</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p36">8.1.2 Hosting agents through an API</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p48">8.1.3 Consuming an agent web service in a web application</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-8.html#p68">8.2 Dockerizing agent systems</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p74">8.2.1 Containerizing an agent microservice</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p89">8.2.2 Orchestrating agentic systems with Docker Compose</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p105">8.2.3 Externalizing local agent microservices</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-8.html#p118">8.3 Considering advanced deployment strategies</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p120">8.3.1 Choosing a runtime: Edge, API, or event-driven</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p130">8.3.2 The three “wires” of communication</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p136">8.3.3 Practical multi-agent topologies that adapt well</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p141">8.3.4 State, memory, and idempotency</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p149">8.3.5 Release engineering for agents (prompts, tools, models)</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p155">8.3.6 Observability matters</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p163">8.3.7 Reliability patterns: Timeouts, fallbacks, and budgets</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p170">8.3.8 Cost control and model routing</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-8.html#p187">8.4 Security, safety, and governance in production</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p189">8.4.1 A quick threat model for agentic systems</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p203">8.4.2 Identity and access for people, services, and agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p208">8.4.3 Secrets and configuration management</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p210">8.4.4 Tool safety: Sandboxing and egress control</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p217">8.4.5 Prompt-injection and data-exfiltration defenses</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-8.html#p228">8.4.6 Safety and policy enforcement</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-8.html#p242">8.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-9.html"><em>9 Understanding the agentic loop</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-9.html#p8">9.1 Peeling back the three agentic loop layers</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p10">9.1.1 Layer 1: The inner loop (sense-plan-act-learn)</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p16">9.1.2 Layer 2: The task loop</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p22">9.1.3 Layer 3: The meta loop</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-9.html#p27">9.2 Layer 2: Looping with a deep research agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p33">9.2.1 Creating the initial state and plan</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p38">9.2.2 Adding the tools</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p43">9.2.3 Understanding iteration body output</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p50">9.2.4 The termination gate</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p62">9.2.5 Coding the deep research loop</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p70">9.2.6 Synthesizing the final output</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p77">9.2.7 When to use an agentic loop</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-9.html#p85">9.2.8 Building a repetitive task loop agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-9.html#p91">9.3 Layer 3: Multi-agent orchestration loops</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-9.html#p104">9.4 Building collaborative agentic loops</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-9.html#p120">9.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-10.html"><em>10 Exploring the cognitive agent that thinks, monitors, and adapts</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-10.html#p9">10.1 Understanding agent cognition and metacognition as engineering concepts</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p11">10.1.1 The five failure modes of capable-but-not-cognitive agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p28">10.1.2 From reasoning primitives to cognitive architecture</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p36">10.1.3 Defining cognition for agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p45">10.1.4 Defining metacognition for agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p52">10.1.5 Three theoretical foundations</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-10.html#p66">10.2 Mapping the mind into a cognitive agent architecture</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p68">10.2.1 Architecture overview</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p75">10.2.2 The cognitive workspace</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p81">10.2.3 The perception module</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p86">10.2.4 The planning module</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p94">10.2.5 The execution module</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p100">10.2.6 The evaluation module</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p107">10.2.7 The attention module</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p115">10.2.8 The memory module and the MCP memory server</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-10.html#p127">10.3 Building and running the cognitive agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p129">10.3.1 The cognitive loop</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p137">10.3.2 A complete cognitive agent with MCP</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p140">10.3.3 Walkthrough: Watching the cognitive cycle in action</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p155">10.3.4 Confidence-gated execution</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p158">10.3.5 Stagnation detection and strategy pivoting</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p162">10.3.6 Knowledge boundary awareness</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p167">10.3.7 Emergent behaviors</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-10.html#p173">10.4 Measuring cognitive capability and looking ahead</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p177">10.4.1 Cognitive efficiency metrics</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p183">10.4.2 Before and after: Measuring the effect</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-10.html#p186">10.4.3 The road to more general agents</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-10.html#p191">10.5 Exercises</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/chapter-11.html"><em>11 Tips for building agentic systems</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-11.html#p7">11.1 Field-tested tips organized by the five agentic layers</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-11.html#p11">11.1.1 The core layer: Persona</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-11.html#p20">11.1.2 Tools and agent actions</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-11.html#p32">11.1.3 Reasoning and planning</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-11.html#p42">11.1.4 Knowledge and memory</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/chapter-11.html#p54">11.1.5 Evaluation and feedback</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-11.html#p65">11.2 Tips for building a customer support agent</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-11.html#p83">11.3 Tips for building a RAG agent system</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/chapter-11.html#p97">11.4 Tips for building a deep research agent system</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/appendix-a.html"><em>appendix A  Setting up the sample code repository</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-a.html#p4">A.1 Cloning the repository</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-a.html#p8">A.2 Creating a Python environment</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-a.html#p19">A.3 Installing dependencies and configuring the environment</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-a.html#p21">A.3.1 Path A: Using the VS Code debugger</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-a.html#p23">A.3.2 Path B: Installing manually with pip</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-a.html#p27">A.3.3 Configuring the OpenAI API key</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-a.html#p32">A.4 Running the sample code</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-a.html#p34">A.4.1 Running a sample</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-a.html#p38">A.4.2 Troubleshooting common problems</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-a.html#p42">A.4.3 Keeping your setup healthy</a></p>
+  </div>
+  <div class=" readable-text">
+   <p><strong><a href="../Text/appendix-b.html"><em>appendix B  Node.js setup for local MCP servers</em></a></strong></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-b.html#p4">B.1 Installing Node.js</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p6">B.1.1 Installing Node.js on Windows</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p12">B.1.2 Installing Node.js on macOS</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p16">B.1.3 Installing Node.js on Linux or WSL</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-b.html#p22">B.2 Verifying your Node and npx installation</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p24">B.2.1 Checking the installed versions</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p28">B.2.2 How npx finds and caches packages</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-b.html#p35">B.3 Running an MCP server with npx</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p37">B.3.1 Anatomy of the npx command</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p44">B.3.2 Running the filesystem MCP server</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p50">B.3.3 Wiring the server into an MCP client</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 2em; font-size: 90%;"><a href="../Text/appendix-b.html#p54">B.4 Troubleshooting and keeping Node healthy</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p56">B.4.1 Common issues</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p62">B.4.2 Clearing the npx cache</a></p>
+  </div>
+  <div class=" readable-text">
+   <p style="margin-left: 4em; font-size: 80%;"><a href="../Text/appendix-b.html#p66">B.4.3 Updating Node</a></p>
+  </div>
+  <div class="readable-text">
+   <p style="font-size: 110%;"><a href="../Text/index.html">index</a></p>
+  </div>
+ </div></div></body></html>

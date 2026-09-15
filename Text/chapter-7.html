@@ -1,0 +1,1126 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>AI Agents in Action, Second Edition</title><link rel="stylesheet" type="text/css" href="../Styles/stylesheet.css"/></head><body><div id="book-content"><div id="sbo-rt-content"><div class="readable-text" id="p1"> 
+   <h1 class=" readable-text-h1"><span class="chapter-title-numbering"><span class="num-string">7</span> </span><span class="chapter-title-text">Building robust agents with evaluation and feedback</span></h1> 
+  </div> 
+  <div class="introduction-summary"> 
+   <h3 class="introduction-header"><span class="CharOverride-1">This chapter covers</span><span class="CharOverride-1"></span></h3> 
+   <ul> 
+    <li class="readable-text" id="p2"><span class="CharOverride-2">Introducing agent evaluation and feedback</span></li> 
+    <li class="readable-text" id="p3"><span class="CharOverride-2">Implementing test-driven agent development</span></li> 
+    <li class="readable-text" id="p4"><span class="CharOverride-2">Employing grounding, critic, and evaluation agents</span></li> 
+    <li class="readable-text" id="p5"><span class="CharOverride-2">Using Phoenix for evaluation and feedback</span></li> 
+   </ul> 
+  </div> 
+  <div class="readable-text" id="p6"> 
+   <p>Evaluation and feedback provide the discipline that makes agent robustness measurable and improvable. They do not produce robustness on their own; a poorly architected agent will fail in ways that no evaluation suite can fix. What evaluation and feedback give you is visibility into how the system actually behaves and a mechanism for iterating toward better behavior over time.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p7"> 
+   <p>Agent evaluation takes many forms, from benchmark and red team testing to grounding checks and agents that evaluate other agents. Feedback systems developed for agents come from human reviewers, evaluator agents, test outputs, and self-assessment. Each one answers a different question about the agent and occupies a distinct role in the development lifecycle.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p8"> 
+   <p>While implementing evaluation and feedback is generally a requirement in any production agent system, this shouldn’t be the only time you look at hardening your agent systems. You almost always want to roll in this final layer (the fifth layer in figure 3.7, evaluation and feedback), which we will explore in this chapter.</p> 
+  </div> 
+  <div class="readable-text" id="p9"> 
+   <h2 class=" readable-text-h2"><span class="num-string">7.1</span> Introducing agent evaluation and feedback</h2> 
+  </div> 
+  <div class="readable-text" id="p10"> 
+   <p>In this section, we zoom out and map the different evaluations and feedback loops around an agent (tests, humans, automated evaluators). Agents rely on an internal evaluation and feedback mechanism that is activated in the Learn step of the sense-plan-act-learn process loop. In addition, we can provide external mechanisms that evaluate and provide feedback to the agent or to ourselves. Figure 7.1 highlights the various steps and systems that may be used for agent evaluation and feedback: red team and benchmark testing, ground or critic agent evaluators, and human evaluation.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p11">  
+   <img alt="" src="../Images/CH07_F01_Lanham4.png" style="width: 100%; max-width: max-content;" width="894" height="784"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.1 The external agent evaluation and feedback systems for a single user-facing agent. In the figure, a generative agent may face evaluation from a critic for general output feedback or from a grounding agent for context-specific feedback and evaluation.</span></h5>
+  </div> 
+  <div class="readable-text" id="p12"> 
+   <p>Each evaluation type can provide feedback through one of two paths. It may flow directly back to the agent through critic agents, grounding checks, or other in-loop evaluators that influence the agent’s next action. Or it may flow into an evaluation database that stores test results and human feedback for later analysis, regression detection, and training signal.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p13"> 
+   <p>Evaluation itself takes three main forms, each suited to different kinds of correctness. Deterministic test cases handle structured outputs where correctness can be checked exactly (the agent returned the expected schema, called the right tool, produced output that matches a known good answer). LLM and agent evaluators handle fuzzier natural-­language judgments, where correctness is a matter of degree rather than a match (rubric scoring, classification, or comparing two outputs for relative quality). Human evaluators handle the cases the other two miss: edge cases, policy concerns, tone problems, and anything that requires real-world judgment.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p14"> 
+   <p>From this database, we can attach a specialized feedback agent whose role is to constantly review evaluations and feedback. This agent can generate reports and dashboards or send alerts if some activity becomes critical. While not all systems require all forms of evaluation and feedback, you generally want to employ the following methods when appropriate:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p15"><em>Red team testin</em><em>g</em>—This evaluates whether specific terms, phrases, or patterns will break your system. Any user-facing agent or agent system should undergo some form of red team testing.</li> 
+   <li class="readable-text" id="p16"><em>Benchmark testin</em><em>g</em>—Tests how well an agent solves or attains a known problem or goal. These comprehensive tests are intended to cover entire agent systems but can also be used to evaluate individual agents.</li> 
+   <li class="readable-text" id="p17"><em>Human feedbac</em><em>k</em>—Any user-facing agent system should provide a way for users to give feedback through thumbs up/down ratings, comments, or both. Human feedback is the foundation for how real agent systems are evaluated and improved in production, not a supplementary input. Raw feedback is noisy, though, and needs to be handled before it can drive decisions. Statistical aggregation, outlier detection for coordinated or anomalous patterns, stratified sampling that weights expert versus casual users, and follow-up review on flagged outputs are the practical techniques for separating signal from noise.</li> 
+   <li class="readable-text" id="p18"><em>Grounding agen</em><em>t</em>—This agent applies grounding evaluation to RAG systems, checking whether a response is grounded in the context the knowledge agent retrieved. Grounding itself is a general technique for verifying that model output ties back to a verifiable source, and it applies beyond RAG to tool-call validation, memory verification, and citation auditing. The grounding agent is the implementation; grounding is the technique. Take the source, take the output, and check whether the output’s claims are supported by the source. Apply it wherever the agent has an authoritative source to defer to.</li> 
+   <li class="readable-text" id="p19"><em>Evaluation/critic agen</em><em>t</em>—This agent provides an additional level of evaluation and feedback for internal reasoning during planning, determining goal completion, and understanding action output. Although this type of agent can be added to any agent workflow, it is commonly used in the flow and collaboration multi-agent patterns.</li> 
+  </ul> 
+  <div class="readable-text" id="p20"> 
+   <p>You may encounter other evaluation and feedback patterns that derive from or extend these methods. Do not wait until the later stages of development to employ evaluation and feedback. Much as testing drives test-driven development (TDD), the same practices apply when building agents.</p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p21"> 
+    <h5 class=" callout-container-h5 readable-text-h5"><strong>Governance for multi-agent systems</strong></h5> 
+   </div> 
+   <div class="readable-text" id="p22"> 
+    <p>Multi-agent systems introduce a class of failure modes that single-agent systems do not have. The most concerning is agent collusion: a setup where multiple agents reinforce each other’s wrong answers because they share assumptions, biases, or training data, and no external check breaks the loop. A grounding agent that uses the same model as the agent it is grounding will tend to validate the same hallucinations the original agent produced.</p> 
+   </div> 
+   <div class="readable-text" id="p23"> 
+    <p>Several practices reduce collusion risk. Use different models for evaluator agents than for the agents being evaluated, because models from different providers tend to fail in different directions and an evaluator with the same training data shares the same blind spots. Where different models are not practical, use different prompts and personas to push the evaluator toward a different stance (an evaluator prompted to find problems behaves differently than one prompted to confirm correctness, even on the same model). Periodically include human review on flagged outputs and on a random sample of unflagged outputs, because an automated evaluation system that is never checked against ground truth can drift undetected.</p> 
+   </div> 
+   <div class="readable-text" id="p24"> 
+    <p>Governance beyond collusion includes a few standard moves worth naming. Define a clear authority hierarchy (which agent has the final say when evaluators disagree). Log every agent-to-agent message so disagreements and decisions are auditable after the fact. Set escalation rules for cases where evaluators cannot agree or where confidence drops below a threshold, with human review as the fallback. Limit each agent’s authority to what its role requires, so a single compromised or malfunctioning agent cannot cascade decisions across the system.</p> 
+   </div> 
+   <div class="readable-text" id="p25"> 
+    <p>These practices are not unique to evaluation agents, but they show up most acutely there, because evaluation is where the system’s measure of its own correctness lives. An evaluation layer that colludes with the agents it is evaluating is worse than no evaluation layer, because it provides false confidence. Treating governance as part of the evaluation design, not as a separate concern bolted on later, is the durable framing.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p26"> 
+   <h2 class=" readable-text-h2"><span class="num-string">7.2</span> Implementing test-driven agent development</h2> 
+  </div> 
+  <div class="readable-text" id="p27"> 
+   <p>Test-driven development is an established software engineering practice where tests are written to express requirements before the implementation that satisfies them. The honest version is that TDD is often more aspirational than universal: many teams write tests after an MVP, especially under deadline pressure, and the discipline is more useful as a habit than as a rule. What stays true is that defining what good looks like before building it produces cleaner systems than the alternative.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p28"> 
+   <p>The same principle applies to agents. Defining what a good agent response looks like and then building the agent to satisfy that definition is more disciplined than building the agent and hoping the evaluation catches problems later. As shown in figure 7.2, this approach is known as test-driven agent development (TDAD).</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p29">  
+   <img alt="" src="../Images/CH07_F02_Lanham4.png" style="width: 100%; max-width: max-content;" width="904" height="673"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.2 The human process of developing agents using TDAD: first, we think of goals and benchmarks; then we test, develop the prompt, refactor, and repeat the process.</span></h5>
+  </div> 
+  <div class="readable-text intended-text" id="p30"> 
+   <p>The agent version of “what good looks like” is usually expressed as rubrics rather than unit tests. Rubrics specify the criteria a response should meet (factual accuracy, grounding in retrieved context, appropriate tone, structural correctness), and the evaluation pipeline checks the agent’s output against those criteria. We will return to rubrics later in the chapter, where the connection between TDAD and rubric-based evaluation becomes concrete.</p> 
+  </div> 
+  <div class="readable-text" id="p31"> 
+   <p>The figure demonstrates the human process of building an agent (prompt and tools) by following the TDAD process. This process starts with thinking, testing, prompting, and refactoring. In TDAD, we first establish a set of goals or input benchmarks against which the agent will be tested, identifying expected responses and known-bad responses for each.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p32"> 
+   <p>Agent testing extends beyond input and output comparison. A complete test observes the agent holistically: which tools it selected, what reasoning steps it produced, whether it stayed grounded in retrieved context, how many steps it took to reach an answer, how much latency and cost the run accumulated, and how it behaved when something failed. Each of these is a testable property, and any of them can be wrong even when the final output looks right.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p33"> 
+   <p>Examples of incorrect outputs and incorrect intermediate behavior help evaluation agents distinguish good runs from bad ones. The same agent that produced a correct answer through five wrong tool calls is not the same as one that produced it through two right ones, and a complete test will catch the difference.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p34"> 
+   <p>Then we test, and at the start of testing we should expect the agent to fail. Because the LLMs that power agents are variable, run each test multiple times to confirm the failure is consistent rather than a one-off sample. From the failure, identify the minimum updates to the agent’s prompt and tools that will let the benchmark pass. </p> 
+  </div> 
+  <div class="readable-text intended-text" id="p35"> 
+   <p>“Minimum” is worth defining because it is the part most practitioners get wrong. The progression that works in practice, from smallest to largest change, goes like this: change a single word for tone or precision, add a clause to an existing sentence, add a single sentence to an existing section, add a new section to the prompt, add or modify a tool, change the model or its parameters. Try the smaller changes first and only escalate when they do not fix the failure.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p36"> 
+   <p>Doing the minimum keeps prompts lean, preserving model performance and reducing latency on every call. Bloated prompts emerge from teams that add a paragraph every time something goes wrong, never delete anything, and end up with multipage system prompts where each section contradicts another. The discipline is not just to make the smallest change, but to remove things that no longer earn their place.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p37"> 
+   <p>Next, we retest and refactor. We rerun all previously passing benchmarks to confirm the agent is working as expected. When previously passing benchmarks break, we go back and refactor the prompt, making minimal changes to allow all benchmarks to pass. Continue refactoring and testing to confirm that the agent passes all benchmarks.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p38"> 
+   <p>We will generally want the agent to pass all benchmarks before continuing. But it is not unusual for previous benchmarks to fail because of changes made to support other benchmarks. This will likely happen because one benchmark may contradict another. For example, one benchmark may force an agent to think step by step, while another may require it to answer quickly without thinking. In such cases, when benchmarks start to break down, you may want to consider the following questions and options:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p39"><em>Should all benchmarks pass?</em> If the answer is no, use the failing benchmarks as an example of wrong output. Another reason the answer may be no is that you expect the agent to perform well on only 90% of your established tests. This may be because you have dozens or hundreds of benchmarks developed over time, and achieving a 100% pass rate is not always practical.</li> 
+   <li class="readable-text" id="p40"><em>Does adding an agent make sense? </em>If your agent is passing most benchmarks but failing on a subset, one option is to add a specialized agent that handles only those cases. This introduces a routing problem (which agent answers a given input), and the router itself can make mistakes that increase the overall error rate before specialization pays off. Routing accuracy is its own evaluation problem.</li> 
+   <li class="readable-text" id="p41"><em>Should you refactor your entire agent?</em> Adding agents is a lot more work, and often it makes more sense to break the agent down and rebuild it. Fortunately, rebuilding an agent often only involves recreating the agent’s instruction prompt from the beginning. This time, when you rebuild the agent, the instructions focus on the benchmarks that caused the most problems or are the most complex.</li> 
+  </ul> 
+  <div class="readable-text print-book-callout" id="p42"> 
+   <p><span class="print-book-callout-head">NOTE</span> “Mixture of experts” inside an LLM refers to a layer that routes tokens to subnetworks within a single forward pass, which is not the same as multiple agents with separate calls. The multi-agent version is closer to specialist routing or ensemble. It’s worth keeping the terms distinct. Specialization increases complexity, evaluation overhead, and cost. Before going there, consider whether refactoring the single agent (better prompt, tools, grounding) closes the gap. Specialization is the right move when the failing subset is genuinely distinct, not when the single agent is one edit away from passing.</p> 
+  </div> 
+  <div class="readable-text" id="p43"> 
+   <p>Generally, you will want to apply TDAD across an agent system and focus on the individual specialized agents where most of the work is done. Doing this requires agent and agent system benchmarks that can be applied and tested at different levels of granularity. But if you don’t, you risk gaps in functionality that might surface during production use.</p> 
+  </div> 
+  <div class="readable-text" id="p44"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.2.1</span> Exploring TDAD in practice</h3> 
+  </div> 
+  <div class="readable-text" id="p45"> 
+   <p>Let’s go through the process of creating an agent with TDAD. This demonstrates the process so that you can use it yourself to build a single- or multi-agent system. Figure 7.3 presents a single-agent system and some initial benchmarks we would expect this agent to achieve. In this example, our benchmarks consist of a set of questions specific to some fictional source material.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p46">  
+   <img alt="" src="../Images/CH07_F03_Lanham4.png" style="width: 100%; max-width: max-content;" width="887" height="520"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.3 Architecture of a simple RAG knowledge agent. The goal of the agent is to answer questions from a benchmark by searching its knowledge base and returning answers. A simple evaluator LLM evaluates the answer based on the expected and incorrect answers from the benchmark test. The accuracy of the RAG agent can be determined by the percentage of benchmark questions it answers correctly.</span></h5>
+  </div> 
+  <div class="readable-text" id="p47"> 
+   <p>In the figure, the RAG agent relies on a simple retrieval architecture pattern. In this pattern, an agent receives a question about some external knowledge it has access to. From there, it breaks the question down into searchable words and phrases and then uses those terms to search its knowledge base. If knowledge is found, it uses that as context to answer the user’s question; otherwise, it says that nothing was found. This answer is then passed to an evaluator along with the expected and incorrect answer candidates paired with the benchmark. The evaluator then uses this information to determine whether the benchmark passed or failed.</p> 
+  </div> 
+  <div class="readable-text" id="p48"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.2.2</span> Coding and testing the RAG agent</h3> 
+  </div> 
+  <div class="readable-text" id="p49"> 
+   <p>Now that we have an idea of the benchmarks, we should evaluate our agent as we build the minimum code to support them. At this point, our focus is to do enough that we can ask the agent a question. It will answer, and evaluate that answer. How you build this code is up to you, and you may want to use TDD for the regular software pieces, such as database connectivity and other tools.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p50"> 
+   <p>Listing 7.1 shows the code that will run the agent through the benchmarks table. At this stage, the evaluation is simple and uses string matching against the expected answer. For the agent itself, all we have defined is the role/persona in the instructions and nothing else. Remember, our goal with TDAD is to build the minimal set of instructions with the minimum set of tools to pass all our benchmark goals.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p51"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.1 01_RAG_agent.py</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">_special_knowledge_db = [    #1
+    "Nebula Forge engine spins antimatter rings for gravity control.",
+    "Solaris Glacier absorbs heat, releasing luminescent icefire at dusk.",
+    "Quantum Bark trees emit entangled photons guiding nocturnal insect migrations.",
+    "Aether Silk fabric self-weaves repairs within fourteen-millisecond microtears.",
+    "Chrono Coral reefs rewind water currents three minutes every solstice.",
+]
+
+# benchmarks for special knowledge
+_benchmarks = [    #2
+    {"q": "Nebula Forge engine spins what?", "a": "antimatter", "wrong": "fusion"},
+    {
+        "q": "Solaris Glacier releases luminescent what?",
+        "a": "icefire",
+        "wrong": "lava",
+    },
+    {"q": "Quantum Bark trees emit what?", "a": "photons", "wrong": "spores"},
+    {"q": "Aether Silk fabric repairs what?", "a": "microtears", "wrong": "threads"},
+    {"q": "Chrono Coral reefs rewind what?", "a": "currents", "wrong": "tides"},
+]
+
+@function_tool    #3
+def search_knowledge(query: str) -&gt; dict:
+    """Search the knowledge database for relevant facts."""
+    matches = [doc for doc in _special_knowledge_db if query.lower() in doc.lower()]
+    print(f"Found {len(matches)} matches for '{query}'")
+    return {"status": "ok", "context": "\n".join(matches)}
+
+agent = Agent(    #4
+    name="RAG Agent",
+    instructions="""
+You are a retrieval-augmented knowledge agent.
+""",
+    tools=[search_knowledge],
+)
+
+for benchmark in _benchmarks:    #5
+    question = benchmark["q"]
+    answer = benchmark["a"]
+    wrong_answer = benchmark["wrong"]
+    result = asyncio.run(Runner.run(agent, input=question)).final_output.strip()
+    print("" + "=" * 40)
+    print(f"Question: {question}")
+    print(f"Answer: {result}")
+    if result.lower() == answer.lower():
+        print(f"Correct -&gt; {answer}")
+    else:
+        print(f"Incorrect -&gt; Expected: {answer}")
+        if wrong_answer:
+            print(f"Wrong answer was: {wrong_answer}")</pre> 
+    <div class="code-annotations-overlay-container"> #1 This is the fictional database of facts that will be stored in memory.
+     <br/>#2 The benchmarks we want to evaluate the agent against
+     <br/>#3 The tool we want the agent to use to search for knowledge
+     <br/>#4 Code for the agent, including providing it with the search tool
+     <br/>#5 Loop through each benchmark to ask questions and evaluate answers.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p52"> 
+   <p>Go ahead and run the code, and as expected, the agent will fail every test. If the agent does pass a test, avoid jumping up and down before running a few more tests to confirm that the answer is consistent. As a rule, you will want to run each passing test three times to be reasonably comfortable with an agent’s consistency.</p> 
+  </div> 
+  <div class="readable-text print-book-callout" id="p53"> 
+   <p><span class="print-book-callout-head">NOTE</span> Having to run benchmarks multiple times contrasts with TDD, where one pass is all you need. Unfortunately, because LLMs are variable by nature, they require us to run benchmarks multiple times during development, at least three times and often more. A key indicator of how many iterations to run is the variability in the agent’s output. Of course, all of this can be automated and include offline storage of evaluation runs.</p> 
+  </div> 
+  <div class="readable-text" id="p54"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.2.3</span> Refactoring the agent</h3> 
+  </div> 
+  <div class="readable-text" id="p55"> 
+   <p>Now that we have a fully working agent system that fails all benchmarks, we can begin refactoring and building the agent prompt instructions. We want to start by looking at easy fixes, such as correcting output formatting or providing instructions for handling data. That’s what this next piece of code does.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p56"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.2 02_RAG_agent.py (agent only)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">agent = Agent(
+    name="RAG Agent",
+    instructions="""
+You are a retrieval-augmented knowledge agent.
+Break down the user's query into smaller parts if needed    #1
+to fetch relevant context for the user's query.
+Always answer with a single word.    #2
+""",
+    tools=[search_knowledge],
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 We provide some clearer instructions on how to search for context.
+     <br/>#2 Inform the agent to always answer with a single word.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p57"> 
+   <p>What we did in the listing was ensure that we always output single-word answers, which match our benchmark formatting. Next, we provide some instructions for breaking down the question, but for now, we avoid specifically instructing tool use. As a guide, we want to avoid formatting and tool use instructions in the prompt.</p> 
+  </div> 
+  <div class="readable-text" id="p58"> 
+   <h4 class=" readable-text-h4">Agent prompt design rule</h4> 
+  </div> 
+  <div class="readable-text" id="p59"> 
+   <p>Early agent development relied on prompts that explicitly listed every tool and dictated output format in detail. Modern practice registers tool metadata (names, descriptions, parameter schemas) through the SDK, and the model uses that metadata to choose tools without the prompt walking through each one. The shift is that prompts no longer need to repeat what the tool metadata already says.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p60"> 
+   <p>Tool instructions have not disappeared, though. AGENT.md files, system-prompt sections, and inline guidance are still common when specific tools need specific handling (use this tool only for legal queries, and prefer the local tool over the remote one). The shift is in responsibility, not requirement.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p61"> 
+   <p>Output format follows the same pattern. Structured output libraries let you declare the response shape (a Pydantic model, a JSON schema), and the SDK expands that declaration into the prompt and enforces validation. Dynamic discovery is convenience, not magic: the format still ends up in the prompt, just expanded by the SDK rather than written by hand.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p62"> 
+   <p>Formatting and tool-use instructions should be provided outside the prompt. For formatting, this means setting the output type on the agent and then constructing the output you want from that strongly typed format. For tools, the tool description and the comment at the head of the function should provide the explanation the agent requires to use the tool.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p63"> 
+   <p>Keeping formatting and tool details out of the instruction prompt makes it easier for the agent to adapt to new tools or output formats without rewriting prose. This is a clean separation, not a rule against long prompts. Long, specific system prompts are common in production, especially for agents that need to avoid certain behaviors, enforce policies, or operate in regulated domains; the system prompts shipped by major LLM providers themselves often run several thousand tokens.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p64"> 
+   <p>Any time you change an agent’s instructions, the agent may behave differently. The risk varies with what you change: tightening a constraint usually has predictable effects, while adding a new section or modifying tone can interact with the rest of the prompt in ways that surface only under evaluation. The right move is not to avoid prompt changes but to evaluate the impact of each change against your benchmarks before treating the new prompt as the new baseline.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p65"> 
+   <p>Run the refactored agent against the benchmark, and you will see roughly 40% accuracy, with two of five questions answered correctly. The trace output in listing 7.3 shows where the failures come from. The agent sends its first query directly to the retrieval tool, and when the retrieval returns weak or empty results, the agent accepts the absence as the answer rather than trying a different query.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p66"> 
+   <p>The diagnostic is worth seeing clearly because it tells us exactly what to fix. The retrieval system is working (it returns results when the query is well formed), but the agent has no strategy for when those results do not contain the answer. What the agent needs is a query-refinement step: when retrieval returns nothing useful, rephrase the query and try again before concluding the information is absent.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p67"> 
+   <p>The fix lives in the agent’s instructions, not in the retrieval system. Adding a clause that tells the agent to refine and retry queries when results are thin (try synonyms, broader terms, or a decomposition into subquestions) gives the agent the recovery behavior it was missing.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p68"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.3 02_RAG_agent.py (output)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">Found 0 matches for 'Nebula Forge engine uses'    #1
+========================================
+Question: Nebula Forge engine spins what?    #2
+Answer: Unknown.    #3
+Incorrect -&gt; Expected: antimatter    #4
+Wrong answer was: fusion   #5</pre> 
+    <div class="code-annotations-overlay-container"> #1 This is the query used to find the documents, and it is returning 0 matches.
+     <br/>#2 The benchmark question
+     <br/>#3 The agent’s answer/response
+     <br/>#4 Output the expected answer, if incorrect.
+     <br/>#5 Wrong answer, which will be used later
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p69"> 
+   <p>Now, we have a couple of options for how to implement this. We can modify the tool instructions to tell the agent to use only simple queries (1 to 2 words), or we can modify the instruction prompt. As mentioned earlier, our preference should always be to correct the tool-use description if an agent is struggling to use a tool.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p70"> 
+   <p>Listing 7.4 shows an updated function/tool to clarify that the tool is best used for keyword searches. So we also renamed the tool to make that clearer to the agent. In cases where you can’t modify the tool description or name, such as with tools hosted on an MCP server, you’ll be forced to provide tool-use instructions in the agent prompt.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p71"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.4 03_RAG_agent.py (updated tool)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">@function_tool
+def search_knowledge_by_keyword(query: str) -&gt; dict:    #1
+    """
+    Search the knowledge database for relevant facts.
+    param query: The single keyword query string to search for.    #2
+    """
+… omitted
+
+agent = Agent(
+    name="RAG Agent",
+    instructions="""
+You are a retrieval-augmented knowledge agent.
+Break down the user's query into smaller parts if needed
+to fetch relevant context for the user's query.
+Always answer with a single word.
+""",
+    tools=[search_knowledge_by_keyword],    #3
+    model="gpt-4o",    #4
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Updated name of the function tool to better reflect its intended use
+     <br/>#2 Updated tool description to help guide the agent
+     <br/>#3 Includes the new tool in the agent’s toolset
+     <br/>#4 We may even want to set the model explicitly to keep behavior consistent.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p72"> 
+   <p>Run the code and you will see roughly 60% accuracy on the benchmark, with three of five questions counted as correct. Before reading this as agent failure, look at which questions the evaluator marked wrong and what the agent actually returned. Two of the failures in this run are not retrieval problems at all: the agent returns “Photons.” instead of “photons” and “Water currents” instead of “currents,” both of which are correct answers that fail the evaluator’s strict equality check.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p73"> 
+   <p>This is a useful failure to encounter because it surfaces one of the most common evaluation bugs in agent development. Strict equality (<code>expected == actual</code>) on natural language output is almost always too brittle. Tightening or loosening punctuation, case, and trailing words is normal model behavior, and an evaluator that does not normalize for these will flag correct answers as wrong.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p74"> 
+   <p>The fix lives in the evaluator, not in the agent. Changing the check to something like <code>expected.lower()</code> = <code>actual.lower()</code> accepts the agent’s outputs as correct and returns the benchmark to 5/5. For production benchmarks, normalization (lowercasing, stripping trailing punctuation, removing whitespace) is the minimum; LLM-as-judge evaluators handle the harder cases where multiple phrasings can be correct.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p75"> 
+   <p>If your score is 100% after the evaluator fix, rerun the test to confirm consistency before concluding the agent is solid. From there, depending on the results, you can continue refactoring or call this round complete.</p> 
+  </div> 
+  <div class="readable-text" id="p76"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.2.4</span> Extending evaluation with an agent evaluator</h3> 
+  </div> 
+  <div class="readable-text" id="p77"> 
+   <p>The benchmark evaluator in the last section was very simple and performed only word matching for validation. In the real world, though, we rarely expect an agent to return a single word, and the response is often far more complex. To handle more complex output, we will use an agent to evaluate and score the benchmark.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p78"> 
+   <p>Listing 7.5 shows the addition of an agent evaluator that outputs a strongly typed pass/fail result and includes instructions for performing the evaluation. It also shows the modified original agent. In the original agent, we remove the need to output a single word because we want the agent to respond in more natural language. Likewise, for the agent evaluator, we instruct it to pass or fail the answer based on whether the single key term is present. This lets us use the same benchmark tests without having to rewrite them.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p79"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.5 04_RAG_agent.py (agents only)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">agent = Agent(
+    name="RAG Agent",
+    instructions="""
+You are a retrieval-augmented knowledge agent.
+Break down the user's query into smaller parts if needed
+to fetch relevant context for the user's query.    #1
+""",
+    tools=[search_knowledge_by_keyword],
+    model="gpt-4o",  # Specify the model to use
+)
+
+class EvaluationOutput(BaseModel):    #2
+    """Output model for evaluation agent."""
+    is_correct: bool
+    feedback: str
+
+evaluation_agent = Agent(    #3
+    name="Evaluation Agent",
+    instructions="""
+You are an evaluation agent.
+Your task is to evaluate the answers provided by the RAG Agent.
+You will compare the answer against 
+the expected answers key term to validate correctness.
+""",
+    output_type=EvaluationOutput,
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Remove the instruction that told the agent to only answer with a single word.
+     <br/>#2 Adds strongly typed output to validate pass/fail and provide feedback
+     <br/>#3 New evaluation agent with strongly typed output and instructions
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p80"> 
+   <p>Next, we will look at the code changes to our agent evaluation loop by adding the agent evaluator, as shown in listing 7.6. After the agent answers a question, we package the response (answer), the question asked, the expected key term, and the wrong answer example into a dictionary. This dictionary, converted to a string, is used as input to the evaluation agent to guide its response. Using a dictionary instead of, say, JSON provides cleaner, more structured input for the LLM.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p81"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.6 04_RAG_agent.py (evaluation loop)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">for benchmark in _benchmarks:
+    question = benchmark["q"]
+    answer = benchmark["a"]
+    wrong_answer = benchmark["wrong"]
+    result = asyncio.run(
+        Runner.run(agent, input=question)).final_output.strip()
+    evaluation_input = dict(    #1
+        question=question,
+        answer=result,
+        expected_key_term=answer,
+        wrong_answer=wrong_answer,
+    )
+    print("" + "=" * 40)
+    evaluation = asyncio.run(    #2
+        Runner.run(evaluation_agent, input=str(evaluation_input))
+    ).final_output
+    print(f"Evaluation: {evaluation.is_correct}")    #3
+    print(f"Feedback: {evaluation.feedback}")
+    print(f"Question: {question}")
+    print(f"Answer: {result}")
+    if evaluation.is_correct:    #4
+        print(f"Correct -&gt; {answer}")
+    else:
+        print(f"Incorrect -&gt; Expected: {answer}")
+        if wrong_answer:
+            print(f"Wrong answer was: {wrong_answer}")</pre> 
+    <div class="code-annotations-overlay-container"> #1 Construct a dictionary of input to feed the evaluation agent.
+     <br/>#2 Runs the evaluation agent with the input dictionary converted to string
+     <br/>#3 Outputs if the evaluation agent passed or failed the test
+     <br/>#4 Checks for pass/fail and output the correct answer
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p82"> 
+   <p>Run the code, and this time you will see complete responses from the RAG agent, now evaluated by an evaluation agent. Expect to see an 80%−100% benchmark score, and it can even be helpful to review the feedback the evaluator provided. But you may have noticed that the agent may answer the question correctly while also including extra information that isn’t in the database. To fix this, we need to introduce a grounding agent to make sure our agent stops making stuff up.</p> 
+  </div> 
+  <div class="readable-text" id="p83"> 
+   <h2 class=" readable-text-h2"><span class="num-string">7.3</span> Employing grounding, critic, and evaluation agents</h2> 
+  </div> 
+  <div class="readable-text" id="p84"> 
+   <p>When evaluating an agent’s output, we have a few options and patterns, including grounding agents, critic agents, and evaluation agents. These three patterns help establish practices we can use to evaluate an agent’s output for a specific application or use case, such as knowledge RAG. Figure 7.4 compares the three patterns. It also shows the use cases they best apply to, and when to use them.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p85">  
+   <img alt="" src="../Images/CH07_F04_Lanham4.png" style="width: 100%; max-width: max-content;" width="896" height="873"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.4 Three forms of agents for evaluating agent output: grounding, critic, and evaluation. The grounding agent is specific to evaluating RAG agent output. The critic agent is designed to critique generated content, and the evaluation agent is used for more complex output.</span></h5>
+  </div> 
+  <div class="readable-text" id="p86"> 
+   <p>The grounding agent is specific to the RAG or retrieval agent and is used to make sure the output is grounded in the context the agent used to create the answer. A grounding agent may provide feedback and force the retrieval agent to regenerate the answer or block it entirely. This agent is essential when the answer needs to be grounded in the context of the source material.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p87"> 
+   <p>Critics evaluate generated content and provide feedback when it does not meet the criteria or rubric. They block content that fails evaluation and require regeneration, with a retry ceiling to prevent infinite loops.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p88"> 
+   <p>The retry ceiling is a real architectural decision, not a casual heuristic. What happens on the fourth attempt determines whether the system fails safely or becomes a hidden source of bad output. Common patterns include returning a static fallback response with an apology, escalating to a human reviewer for outputs above a certain stakes threshold, returning the best of the failed attempts with a confidence flag, or surfacing an explicit “could not produce acceptable output” error to the calling system.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p89"> 
+   <p>The right choice depends on context. User-facing systems usually need graceful fallbacks (a generic but safe response is better than an error). Internal pipelines can fail loudly because the downstream system needs to know retries were exhausted. High-stakes work earns human escalation because returning anything automatically when the agent has failed three times in a row is the wrong move.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p90"> 
+   <p>For more complex output that may combine retrieval and novel generation, we use rubrics to help align the content by providing evaluation as feedback during generation. Because determining the cause of failures in this process may be expensive, the feedback/evaluation is sometimes combined with the complex output. This allows users to understand and evaluate the output themselves and adjust accordingly.</p> 
+  </div> 
+  <div class="readable-text" id="p91"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.3.1</span> Reviewing the grounding agent</h3> 
+  </div> 
+  <div class="readable-text" id="p92"> 
+   <p>As a review, grounding is the process of making sure an answer is supported by context and citations. The practice of grounding isn’t limited to RAG knowledge agents; the concept can also be applied to other patterns, such as agent critics. Figure 7.5 revisits the architecture of the RAG knowledge agent, now with a grounding guardrail agent. Adding a grounding agent requires the retrieved knowledge context to be passed to both the RAG agent and the guardrail agent. The RAG agent uses the context to generate an answer, and the grounding agent confirms that the answer is grounded in the context.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p93">  
+   <img alt="" src="../Images/CH07_F05_Lanham4.png" style="width: 100%; max-width: max-content;" width="756" height="566"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.5 RAG knowledge agent coupled with a grounding agent. Both agents are given the same context. The RAG agent generates an answer from the context, and the grounding agent verifies that the answer is grounded by reviewing that same context.</span></h5>
+  </div> 
+  <div class="readable-text" id="p94"> 
+   <p>After the answer routes through the grounding agent, a few options are possible. You can send the answer back to the agent with feedback for approval or rejection, essentially acting as a critic; approve or block the answer and output a static answer; or pass the grounding results on as part of the final answer. How best to handle grounding output will depend on your particular use case, and you could also combine options. For example, you might have a grounding agent reject an answer three times before blocking the output entirely and providing a static statement.</p> 
+  </div> 
+  <div class="readable-text" id="p95"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.3.2</span> Grounding the RAG agent</h3> 
+  </div> 
+  <div class="readable-text" id="p96"> 
+   <p>Listing 7.7 shows the grounding agent we will use to provide feedback on how well an answer is grounded. At the top of the listing, a new tool lets the agent retrieve the last context used to answer a question. Below that is the strongly typed grounded answer, followed by the agent definition. When building a grounding agent, it is best to keep it generic so that it can be reused for other knowledge agents.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p97"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.7 05_RAG_grounding_agent.py (grounding agent)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">@function_tool
+def get_last_context() -&gt; str:    #1
+    """
+    Retrieve the last context used by the grounding agent.
+    """
+    global _last_context
+    if not _last_context:
+        return "No context available."
+    return _last_context
+
+class GroundedAnswer(BaseModel):    #2
+    """Output model for grounding agent."""
+
+    is_answer_grounded: bool
+    feedback: str
+
+grounding_agent = Agent(
+    name="Grounding Agent",
+    instructions="""    #3
+You are a grounding agent.
+Your task is to evaluate the correctness of the answers
+based on the provided question, the context used,
+and output answer.
+""",
+    model="gpt-4o",  
+    output_type=GroundedAnswer,    #4
+    tools=[get_last_context],    #5
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 A tool that provides the context from the last search
+     <br/>#2 Strongly typed answer for grounded output
+     <br/>#3 Grounding agent instructions for evaluating how well an answer is grounded
+     <br/>#4 Strongly typed answer for grounded output
+     <br/>#5 A tool that provides the context from the last search
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p98"> 
+   <p>Next, we will look at an updated benchmark loop in listing 7.8. At this stage, we will continue to use the agent benchmarks as a guide for evaluating the grounding agent’s effectiveness. We won’t worry about the agent evaluator in this example, but we could use TDAD to help refine and improve the grounding agent.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p99"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.8 05_RAG_grounding_agent.py (benchmark loop)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">for benchmark in _benchmarks:    #1
+    question = benchmark["q"]
+    answer = benchmark["a"]
+    wrong_answer = benchmark["wrong"]
+    result = asyncio.run(Runner.run(agent, input=question)).final_output.strip()
+    grounding_input = dict(    #2
+        question=question,
+        answer=result,    #3
+    )
+    print("" + "=" * 40)
+    grounding = asyncio.run(
+        Runner.run(grounding_agent, input=str(grounding_input))
+    ).final_output
+    print(f"Grounded: {grounding.is_answer_grounded}")    #4
+    print(f"Feedback: {grounding.feedback}")
+    print(f"Question: {question}")
+    print(f"Answer: {result}")</pre> 
+    <div class="code-annotations-overlay-container"> #1 Loops through the benchmarks for quick testing of the grounding agent
+     <br/>#2 Creates a dictionary to pass the question and answer to the grounding agent
+     <br/>#3 The context is missing but remember that we provided the agent with a tool to get the last context.
+     <br/>#4 Prints the results
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p100"> 
+   <p>For this simple example, the grounding output is combined with the final output to help us gauge the effectiveness of the grounding. Run this code, and you will see how well the grounding agent ensures that the agent relies only on the provided context to answer the question. Examine the output for each benchmark question to confirm how well the grounding agent is working.</p> 
+  </div> 
+  <div class="readable-text" id="p101"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.3.3</span> Implementing grounding agents as guardrails</h3> 
+  </div> 
+  <div class="readable-text" id="p102"> 
+   <p>Generally, when employing a grounding agent, you want ungrounded output to be blocked. You then either have the answer-generating agent regenerate or block the answer with a static response. With the OpenAI Agents SDK, we can easily add a grounding agent to act as a guardrail and enforce both patterns.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p103"> 
+   <p>Listing 7.9 shows the code for the output grounding guardrail and updated RAG agent. In this code, the agent is now embedded in the guardrail function. If the grounding fails, the tripwire-triggered property of the output is set to true, allowing an exception to be thrown.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p104"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.9 06_RAG_grounding_guardrail_agent.py (guardrail)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">@output_guardrail    #1
+async def ground_answer(
+    context: RunContextWrapper, agent: Agent, output: AnswerResult
+) -&gt; GuardrailFunctionOutput:
+    grounding_input = dict(
+        question=output.question,
+        answer=output.answer,
+    )
+    result = await Runner.run(    #2
+             grounding_agent, input=str(grounding_input))
+    result = result.final_output
+
+    return GuardrailFunctionOutput(    #3
+        output_info={
+            "answer_is_grounded": result.is_answer_grounded,
+            "feedback": result.feedback,
+        },
+        tripwire_triggered=result.is_answer_grounded is False,    #4
+    )
+
+agent = Agent(
+    name="RAG Agent",
+    instructions="""
+You are a retrieval-augmented knowledge agent.
+Break down the user's query into smaller parts if needed
+to fetch relevant context for the user's query.
+""",
+    output_type=AnswerResult,
+    tools=[search_knowledge_by_keyword],
+    model="gpt-4o",  # Specify the model to use
+    output_guardrails=[ground_answer],    #5
+)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Use the guardrail decorator to make a function into a guardrail.
+     <br/>#2 Run the grounding agent within the guardrail.
+     <br/>#3 Output the results of the grounding check.
+     <br/>#4 Trigger the guardrail tripwire if the grounding has failed.
+     <br/>#5 Add the guardrail to the agent to monitor output.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p105"> 
+   <p>Next, listing 7.10 shows a main function that runs the agent and watches for tripped guardrail exceptions. We call the RAG agent to answer the question within a <code>try/except</code> block. Because the agent has an output guardrail, we check for triggered exceptions, which indicate that the guardrail failed. In this case, the guardrail is triggered if the answer is not grounded in the context.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p106"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.10 06_RAG_grounding_with_guardrails.py (main function loop)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">async def main():
+    for benchmark in _benchmarks:
+        question = benchmark["q"]
+        try:
+            result = await Runner.run(agent, input=question)
+            result = result.final_output
+            answer = result.answer.strip()    #1
+        except OutputGuardrailTripwireTriggered as e:
+            print(f"Guardrail tripped. Info: {e.guardrail_result.output.output_info}")
+            answer = "No grounded answer available."    #2
+
+        print("" + "=" * 40)
+        print(f"Question: {question}")
+        print(f"Answer: {answer}")</pre> 
+    <div class="code-annotations-overlay-container"> #1 Capture the answer from the answer result.
+     <br/>#2 If grounding fails, output a static answer.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p107"> 
+   <p>When the guardrail is triggered, we output a static response. But we could easily have the RAG agent try again and provide feedback captured in the trigger from the grounding agent. Either way, we now have a RAG agent whose answers are constantly evaluated to ensure that they are grounded in the knowledge context the agent has access to. This can be critical if you need to be 100% sure that you are not providing invalid, incorrect, or potentially dangerous answers.</p> 
+  </div> 
+  <div class="readable-text" id="p108"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.3.4</span> Understanding the role of rubrics in evaluation</h3> 
+  </div> 
+  <div class="readable-text" id="p109"> 
+   <p>The evaluation strategy depends on what the agent is producing. Agents that produce structured outputs against a known target (classification labels, extracted fields, optimization decisions) can be evaluated using traditional metrics such as accuracy, precision, recall, and F1 score. The right-or-wrong question has a clean answer in these cases, and the standard ML evaluation toolkit applies directly.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p110"> 
+   <p>Agents that produce open-ended natural-language outputs (summaries, explanations, plans, creative content) require different methods. Accuracy is rarely well defined when multiple phrasings can be correct and quality is multidimensional, which is why rubrics, LLM-as-judge evaluators, and human review take over from numerical metrics. Most production agents are a mix of both kinds, with structured pieces evaluated numerically and natural-language pieces evaluated through rubrics or by judges.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p111"> 
+   <p>Picking the right evaluation method for each piece of the agent’s output is part of the design work. Defaulting to rubrics when accuracy would suffice creates unnecessary evaluation complexity, and defaulting to accuracy when rubrics are needed yields brittle measures that miss what actually matters.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p112"> 
+   <p>In education, a rubric defines structured criteria and standards a student must meet to receive a particular grade. The same idea applies to evaluating agent output, with one important addition: the rubric itself has to be validated against human judgment, or it scores consistently but consistently wrong. We can follow these steps to define a rubric to evaluate the output’s performance:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p113"><em>Identify the purpose and objectives</em>. Determine the goals you want the output to accomplish. For example, do you want to evaluate the quality of recommendations for a given audience or the overall quality for a given subject, format, or other input?</li> 
+   <li class="readable-text" id="p114"><em>Define criteria</em>. Develop a set of criteria or dimensions that you will use to evaluate the output. These criteria should align with your objectives and provide clear guidelines for assessment. Each criterion should be specific and measurable. For example, you may want to measure a recommendation by how well it fits the genre, subject, and format.</li> 
+   <li class="readable-text" id="p115"><em>Create a scale</em>. Establish a rating scale that describes the levels of performance for each criterion. Standard scales include numerical scales (e.g., 1–5) or descriptive scales (e.g., Excellent, Good, Fair, Poor).</li> 
+   <li class="readable-text" id="p116"><em>Provide descriptions</em>. For each level on the scale, provide clear and concise descriptions that indicate what constitutes a strong performance and what represents a weaker performance for each criterion.</li> 
+   <li class="readable-text" id="p117"><em>Apply the rubric</em>. When assessing a prompt or agent persona, use the rubric to evaluate the prompt’s performance against the established criteria. Assign scores or ratings for each criterion, based on the descriptions for each level.</li> 
+   <li class="readable-text" id="p118"><em>Calculate the total score</em>. Depending on your rubric, you may calculate a total score by summing up the scores for each criterion or using a weighted average if some criteria are more important than others.</li> 
+   <li class="readable-text" id="p119"><em>Ensure evaluation consistency</em>. If multiple evaluators are assessing the profile, ensure consistency in grading.</li> 
+   <li class="readable-text" id="p120"><em>Review, revise, and iterate</em>. Periodically review and revise the rubric to ensure it aligns with your assessment goals and objectives. Adjust it as needed to improve its effectiveness.</li> 
+  </ol> 
+  <div class="readable-text" id="p121"> 
+   <p>Rubric evaluation is a concept that can be applied in a critique or evaluation of output. It defines how well a response aligns with a given rubric’s specific criteria and standards. You can also think of this as the baseline expectation for an output.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p122"> 
+   <p>There are several other important considerations when using grounding with profile evaluation. The list below highlights some key considerations for each concept we have covered:</p> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p123"><em>Rubric</em><em>s</em>—Rubric development and evaluation involve aligning responses with the criteria, objectives, and context defined by the rubric and output. This is a complicated process that may require additional iteration to refine the best rubric for your specific use case.</li> 
+   <li class="readable-text" id="p124"><em>Evaluatio</em><em>n</em>—Evaluating involves assessing whether a response directly addresses the rubric criteria, stays on topic, and adheres to any provided instructions. There are many ways to evaluate LLMs, from having them act as a judge or evaluator to using deterministic code or a human.</li> 
+   <li class="readable-text" id="p125"><em>Scorin</em><em>g</em>—Evaluators and evaluations gauge accuracy, relevance, and adherence to standards when assessing rubrics. When building rubric evaluation systems, be sure to record and track scores for later analysis and improvement.</li> 
+   <li class="readable-text" id="p126"><em>Loggin</em><em>g</em>—Logging captures every input, output, and intermediate step produced by the agent and its evaluators, creating a trail that can be reviewed, queried, and replayed later. Without logs, agent failures show up as user complaints with no way to reconstruct what happened. With logs, the same failure becomes a debuggable trace. Logging needs to cover the evaluator agents too, not just the agents producing the final response. An evaluator that incorrectly passes bad output or fails good output is a silent source of error that only logs can surface.</li> 
+  </ul> 
+  <div class="readable-text" id="p127"> 
+   <p>A well-evaluated response aligns with all the rubric criteria within the given context and objectives. Responses that fail miss the criteria, context, and goals entirely.</p> 
+  </div> 
+  <div class="readable-text" id="p128"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.3.5</span> Building a rubric critic agent</h3> 
+  </div> 
+  <div class="readable-text" id="p129"> 
+   <p>As the concept of rubrics may still be abstract, let’s look at how to apply them to an image generation example. In this example, we want to make sure our image style guidelines are used when generating an image. Listing 7.11 shows the base image generation agent, which we later enhance by adding a critic agent.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p130"> 
+   <p>This code creates an agent that uses the Agents SDK <code>ImageGenerationTool</code> to create an image with a specified set of style guidelines. The agent runs with an image description and internally uses the image tool to generate the image. To get the image, we loop over the items in the response, look for tool calls, and extract the image output from the tool call.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p131"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.11 07_image_generation_agent.py (agent generation)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">agent = Agent(
+    name="Image generator",
+    instructions="""
+--- image style guidelines ---   #1
+""",
+    model="gpt-5-mini",
+    tools=[
+        ImageGenerationTool(   #2
+            tool_config={
+                "type": "image_generation",
+                "quality": "high",
+                "model": "gpt-image-1",
+                "size": "1536x1024",
+            }
+        )
+    ],
+)
+
+image_description = "an agent generating an image"
+image_name = "agent_image_generation"
+
+with trace("Image generation"):
+    result = await Runner.run(agent, image_description)    #3
+    print(result.final_output)
+    for item in result.new_items:    #4
+        if (
+            item.type == "tool_call_item"
+            and item.raw_item.type == "image_generation_call"
+            and (img_result := item.raw_item.result)
+        ):
+            os.makedirs("gen_images", exist_ok=True)
+            image_path = os.path.join("gen_images", f"{image_name}.png")
+            with open(image_path, "wb") as img_file:
+                img_file.write(base64.b64decode(img_result))
+            open_file(image_path)    #5</pre> 
+    <div class="code-annotations-overlay-container"> #1 Style guidelines for the generated image (not shown)
+     <br/>#2 Uses the Agents SDK tool to generate the image
+     <br/>#3 Runs the agent, inputting the image description
+     <br/>#4 Loops through output items to find the tool call and extract the returned image
+     <br/>#5 Saves the generated image and then displays it
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p132"> 
+   <p>A critic agent is a specialized evaluator that scores output against the entire rubric (criteria plus scale). We can build on this example by building a critic agent that evaluates the image according to the style guidelines rubric. The critic agent rates how well it applies the styles. It then passes or fails the image based on these guidelines and the accepted rubric score.</p> 
+  </div> 
+  <div class="readable-text" id="p133"> 
+   <h4 class=" readable-text-h4">Why rubrics matter</h4> 
+  </div> 
+  <div class="readable-text" id="p134"> 
+   <p>A pass/fail evaluation from an LLM judge gives very little insight into why an output passed or failed. The criteria in a rubric provide a detailed critique of what was good or bad, which is what lets us refine the bad while preserving the good. The choice of criteria determines what the rubric can see.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p135"> 
+   <p>Useful criteria for agent output go beyond surface quality and into behavior: hallucination rate (are claims supported by sources), reasoning quality (do intermediate steps follow logically), tool usage correctness (right tool, right parameters, right interpretation), and error handling (does the agent recover from failures or compound them). These behavioral criteria pair with the surface criteria from earlier (accuracy, grounding, structural correctness, tone, completeness). The rubric is only as good as the criteria you include.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p136"> 
+   <p>Before we look at the code, let’s go through the process of building a rubric again to evaluate a response output. There are eight steps to defining a rubric as applied to our image generation example:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p137"><em>Identify the purpose and objectives</em>. The purpose of our image-generating agent is to generate an image according to a strict set of guidelines.</li> 
+   <li class="readable-text" id="p138"><em>Define criteria</em>. For simplicity, we will evaluate how a particular output image aligns with the following style guidelines and used previously to generate images: </li> 
+  </ol> 
+  <div class="browsable-container listing-container" id="p139"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">## Style Guidelines for All Images:
+- **Consistency**: Each image should maintain the same photographic quality with 3D-rendered elements seamlessly integrated
+- **Color Palette**: Use a consistent scheme of blues, purples, warm golds, and greens with pops of bright accent colors
+- **Lighting**: Professional photography lighting with dramatic but warm tones
+- **Infographics**: Semi-transparent holographic projections that don't overwhelm the main subjects
+- **Characters**: AI robots should be cute, approachable, and distinctly different from each other while maintaining a family resemblance
+- **Icons**: Use universally recognizable symbols (lightbulbs for ideas, gears for processing, hearts for alignment, etc.)
+- **Mood**: Optimistic, educational, and slightly futuristic without being cold or intimidating</pre>  
+   </div> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p140"><em>Create a scale</em>. Again, keeping things simple, we will use a simple scale of 1–5 (1 is poor and 5 is excellent).</li> 
+   <li class="readable-text" id="p141"><em>Provide descriptions</em>. See the general descriptions for the rating scale shown next:</li> 
+  </ol> 
+  <div class="browsable-container listing-container" id="p142"> 
+   <div class="code-area-container"> 
+    <pre class="code-area">Score the image on a scale of 1 to 5 using the following scale:
+1. **Poor**: The image does not meet the style guidelines at all.
+2. **Fair**: The image meets some of the style guidelines but has significant issues.
+3. **Good**: The image meets most of the style guidelines but has minor issues.
+4. **Very Good**: The image meets all the style guidelines with only a few minor issues.
+5. **Excellent**: The image meets all the style guidelines perfectly.
+Pass the image if it scores 2 or higher, otherwise fail it.</pre>  
+   </div> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p143"><em>Apply the rubric</em>. At this stage, with the rubric assigned, it is an excellent exercise to evaluate generated images against the rubric manually.</li> 
+   <li class="readable-text" id="p144"><em>Calculate the total score</em>. For our rubric, we will take an overall score across all criteria. You could also score each element and use a combined or average score for evaluation.</li> 
+   <li class="readable-text" id="p145"><em>Ensure evaluation consistency</em>. Asking the LLM to grade and then pass/fail provides more consistent results than just asking for a pass/fail.</li> 
+   <li class="readable-text" id="p146"><em>Review, revise, and iterate</em>. We will review, compare, and iterate on our profiles, rubrics, and the evaluations themselves.</li> 
+  </ol> 
+  <div class="readable-text" id="p147"> 
+   <p>This basic rubric can now be applied to evaluate the responses for our image generator. We will create a critic agent that follows the rubric and grades the images. It will then pass or fail each image based on the criterion score, which is 2 out of 5 according to step 4 above.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p148"> 
+   <p>Listing 7.12 adds the critic agent along with a vision tool (<code>describe_image</code>, not shown) and the means to evaluate the styles using our generated rubric. This agent and the image generation agent now run in a loop. The loop is controlled by whether the critic passes or fails the generated image’s style. The loop continues as long as the critic fails the output image.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p149"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.12 08_image_vision_critic_agents.py (critic agent)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">class CritqueImage(BaseModel):    #1
+    """Result of critiquing image."""
+    image_pass: bool
+    feedback: str
+
+critic = Agent(
+    name="Image Critic",
+    instructions=f"""You are an image critic.
+Your task is to evaluate the quality of generated images
+based on the provided specific criteria and style guidelines.
+{style_guidelines}    #2
+{rubric}    #3
+""",
+    model="gpt-5-mini",  
+    tools=[describe_image],    #4
+    output_type=CritqueImage,    #5
+)
+
+# critic loop
+while failing := True:    #6
+    input = dict(    
+        description=image_description,
+        feedback=feedback,    #7
+    )
+    result = await Runner.run(agent, str(input))
+    # code to save the image ommited
+    critique_result = await Runner.run(
+        critic,
+        f"Please critique the image at {image_path} with the prompt: {image_description}",
+    )
+    critique = critique_result.final_output
+    failing = critique.image_pass is False    #6
+    feedback = critique.feedback    #7</pre> 
+    <div class="code-annotations-overlay-container"> #1 Creates a strongly typed output that returns feedback and pass/fail results
+     <br/>#2 Includes the same style guidelines used to generate the image
+     <br/>#3 Includes the rubric scale and scoring guidelines
+     <br/>#4 Uses a tool (not shown) to extract an image description using a vision model
+     <br/>#5 Creates a strongly typed output that returns feedback and pass/fail results
+     <br/>#6 Loops as long as the output is failing. The critic’s output provides pass/fail results.
+     <br/>#7 Captures the output from the critic and feeds it back to the generating agent
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p150"> 
+   <p>According to our rubric defined previously, we require a score of 2 out of 5 or higher to pass. This is a low bar set deliberately for the demonstration: the critic passes most images easily and the loop runs to completion in reasonable time. Raising the threshold to 3 or 4 would cause the critic to fail most images and the loop could run indefinitely or hit its retry ceiling.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p151"> 
+   <p>In production, this threshold is a critical design decision with real consequences. A threshold set too low ships output to users that fails quality standards. A threshold set too high causes most outputs to fail evaluation, which either burns retry budgets, escalates everything to humans, or starves the system of acceptable responses. The right threshold depends on the cost of a false positive (passing bad output) versus a false negative (failing acceptable output) for the specific application.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p152"> 
+   <p>Calibrating the threshold is part of the rubric validation work covered earlier. Score a sample of outputs against the rubric, have humans label which ones should have passed and which should have failed, and set the threshold at the score where the agreement between rubric scores and human judgment is highest. Revalidate the threshold whenever the rubric, the agent, or the underlying model changes.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p153"> 
+   <p>The same principles we used to build the critic agent here can be applied to other use cases where the output is generated and varies widely. Even with that variation, we can establish rubrics that allow critical agents to evaluate complex outputs such as images, reports, graphs, and other complicated examples.</p> 
+  </div> 
+  <div class="readable-text" id="p154"> 
+   <h2 class=" readable-text-h2"><span class="num-string">7.4</span> Phoenix for evaluation and feedback</h2> 
+  </div> 
+  <div class="readable-text" id="p155"> 
+   <p>The default OpenAI Dashboard Traces page can be beneficial, but as your agent development and systems mature, you need more functionality. Arize Phoenix is an excellent open source platform that can be accessed in the cloud or locally in a Docker container. You can also self-host a server that provides access to others, hosts projects, and tracks token usage and costs, tool usage, latency, user sessions, metrics, and, of course, agents. It can also be invaluable for diagnosing complex bugs within an agent process. Without trace-level observability, it’s almost impossible to debug or improve complex agent flows at scale.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p156"> 
+   <p>On top of all that, it provides mechanisms to track and evaluate agent prompts, models, and other factors. It also offers quick connectivity for most agent platforms, including the OpenAI Agents SDK. Figure 7.6 provides an overview of Arize Phoenix, showing the tracing, tracking, and evaluations it can perform.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p157">  
+   <img alt="" src="../Images/CH07_F06_Lanham4.png" style="width: 100%; max-width: max-content;" width="880" height="684"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.6 Arize Phoenix deployment patterns and use cases for tracing, tracking, and evaluating agents</span></h5>
+  </div> 
+  <div class="readable-text" id="p158"> 
+   <p>Phoenix provides the ability to trace and track usage across all your agents, as well as capture and record agent activity. After capturing activity, you can quickly and easily create experiments and evaluators based on metadata and annotations or customize them to your use case. If you are a serious agent engineer, it is highly recommended that you include Phoenix in your set of tracing, evaluation, and development tools.</p> 
+  </div> 
+  <div class="callout-container sidebar-container"> 
+   <div class="readable-text" id="p159"> 
+    <h5 class=" callout-container-h5 readable-text-h5">Observability alternatives</h5> 
+   </div> 
+   <div class="readable-text" id="p160"> 
+    <p>Phoenix is one of several options for production agent observability, and it is worth knowing the landscape before committing. Langfuse is the closest direct alternative (open source, similar feature set, also self-hostable). LangSmith is the established commercial option, especially for teams using LangChain or LangGraph. Weights and Biases Weave provides tracing alongside the broader W&amp;B ML platform. For lighter setups, OpenTelemetry with an OTLP-compatible backend (Honeycomb, Datadog, Grafana Tempo) works without an agent-specific platform. We use Phoenix in this chapter because it is open source, self-hostable, and feature complete for the patterns we cover; the same patterns apply to any of the alternatives.</p> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p161"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.4.1</span> Connecting to Phoenix</h3> 
+  </div> 
+  <div class="readable-text" id="p162"> 
+   <p>Phoenix uses the underlying OpenTelemetry tracing mechanism that OpenAI Agents and other agent platforms use by default. As such, getting set up is typically quick, though not always painless. In most cases, you may encounter documentation challenges or package conflicts, but fortunately, GPT-5 or other top-tier models can help resolve these problems.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p163"> 
+   <p>Listing 7.13 provides the basic code to connect to Phoenix and start tracing. In this code, we first clear the default OpenAI trace processors by setting <code>set_trace_processors</code> to an empty list. Then we add the Phoenix trace provider and trace the agent with the agent’s trace function. We also set the name of the agent or agent workflow we want to track.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p164"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.13 09_arize_phoenix_tracing.py (basics)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">#docker run -it --rm -p 6006:6006 -p 4317:4317 arizephoenix/phoenix:latest
+
+os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = "http://localhost:6006"    #1
+
+set_trace_processors([])    #2
+tracer_provider = register(
+    project_name="agents",    #3
+    auto_instrument=True,  #4
+)
+
+agent = Agent(
+    name="Assistant", 
+    instructions="You are a helpful assistant")
+
+async def main():    
+    with trace("Haiku Generator"):    #5
+        result = await Runner.run(
+            agent, "Write a haiku about recursion in programming."
+        )
+        print(result.final_output)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Sets the collector endpoint you will send traces to
+     <br/>#2 Clears the default trace processors from the stack; replaces the OpenAI trace processor
+     <br/>#3 The project name is the project to which the traces will be sent in Phoenix.
+     <br/>#4 Auto-instrument your app based on installed dependencies.
+     <br/>#5 Uses the OpenAI trace to tag the agent or set of agents we want to track
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p165"> 
+   <p>You can have one or more agents within the trace function, which lets you track agents and agent workflows. The top commented-out line in the code is the command to run Phoenix as a local Docker container. To do this, you first need to install Docker Desktop. Download and follow the Docker installation instructions to install Desktop on your computer.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p166"> 
+   <p>With Phoenix running in Docker and the code in listing 7.13 completed, open a browser to http: //localhost: 6006 and click the Agents project. You should see the dashboard view shown in figure 7.7. If the Agents project isn’t immediately visible, refresh your browser, and it should appear.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p167">  
+   <img alt="" src="../Images/CH07_F07_Lanham4.png" style="width: 100%; max-width: max-content;" width="894" height="441"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.7 Arize Phoenix Projects dashboard showing an agent workflow, agent, and LLM activity</span></h5>
+  </div> 
+  <div class="readable-text" id="p168"> 
+   <p>From the Projects page, you can select View Traces, Sessions, Metrics, and Config. On the Traces page, you can drill into the agent workflow, agent, and LLM responses to view latency, token usage, and the raw responses sent to the LLM. You can further enhance this view by adding metadata and session tracking, as we will see in the next section.</p> 
+  </div> 
+  <div class="readable-text" id="p169"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.4.2</span> Adding metadata and session tracking</h3> 
+  </div> 
+  <div class="readable-text" id="p170"> 
+   <p>Listing 7.14 shows how to add metadata and session tracking to an agent or agent workflow. Here, we add metadata to the agent and LLM traces and track a session. We add <code>using_session</code> and <code>using_metadata</code> in a <code>with</code> block so they attach to all internal traces. Make sure to keep the agent trace block inside any other tracing.</p> 
+  </div> 
+  <div class="browsable-container listing-container" id="p171"> 
+   <h5 class=" listing-container-h5 browsable-container-h5">Listing 7.14 10_arize_phoenix_metadata.py (only relevant code)</h5> 
+   <div class="code-area-container"> 
+    <pre class="code-area">model = "gpt-5-mini"    #1
+agent = Agent(name="Assistant", instructions="Always answer in a Haiku", model=model)
+
+async def main():
+    agent_input = dict(question="why is the sky blue?")    #2
+    metadata = dict(    #3
+        run_id="abc123", 
+        env="dev", 
+        customer_tier="pro", 
+        model=model)
+
+    with (
+        using_session("sess-42"),    #4
+        using_metadata(metadata),     #4
+    ):
+        with trace("Haiku Generator"):    #5
+            result = await Runner.run(agent, str(agent_input))
+            print(result.final_output)</pre> 
+    <div class="code-annotations-overlay-container"> #1 Defines a model the agent will use
+     <br/>#2 Wraps the input in a dictionary for better input formatting
+     <br/>#3 Defines a dict to contain the metadata key/value entries
+     <br/>#4 Wraps the code in a session and metadata trace context
+     <br/>#5 Always place the agent workflow trace inside other trace objects.
+     <br/>
+    </div> 
+   </div> 
+  </div> 
+  <div class="readable-text" id="p172"> 
+   <p>When you run the code in listing 7.14 and then open Phoenix to the Agents project, you should see something similar to figure 7.8. To see the Metadata column, open the Columns selector in the top right, select the Metadata column, and turn other columns on or off. When the Metadata column is visible, you can click it to expand a selector that lets you quickly filter the traces.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p173">  
+   <img alt="" src="../Images/CH07_F08_Lanham4.png" style="width: 100%; max-width: max-content;" width="876" height="322"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.8 Viewing the Metadata column and filtering traces by an attribute</span></h5>
+  </div> 
+  <div class="readable-text" id="p174"> 
+   <p>Selecting the Metadata column opens a selector that lets you filter on any of the fields by value or expression. This can be a powerful feature for evaluating specific agent activity. Still, it does require you to configure the metadata appropriate to your agent’s use case.</p> 
+  </div> 
+  <div class="readable-text" id="p175"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.4.3</span> Experimenting with evaluators</h3> 
+  </div> 
+  <div class="readable-text" id="p176"> 
+   <p>Experimentation and evaluation are powerful features of Phoenix and can be quickly set up and run from the dashboard. This is essentially the “outer loop” of TDAD, where we turn real traces into datasets, run evaluators on them, and feed the results back into prompts, tools, and policies. Before evaluating, we need to create a dataset of spans (LLM responses). Figure 7.9 walks you through selecting and adding spans to a dataset.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p177">  
+   <img alt="" src="../Images/CH07_F09_Lanham4.png" style="width: 100%; max-width: max-content;" width="878" height="409"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.9 The process to add spans to a dataset for later experimentation and evaluation</span> </h5>
+  </div> 
+  <div class="readable-text" id="p178"> 
+   <p>After adding spans to a dataset by selecting them and then clicking Add to Dataset, you’ll be prompted to create a new dataset. Use the default name, and click Create Dataset. After the dataset is created, a green pop-up will appear in the lower-right corner. Click View Dataset, and you’ll see a page like the one shown in figure 7.10. </p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p179">  
+   <img alt="" src="../Images/CH07_F10_Lanham4.png" style="width: 100%; max-width: max-content;" width="913" height="484"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.10 Viewing the dataset and clicking Run Experiment shows the generated code. You can copy the code into a Python file to create an experiment or evaluation.</span></h5>
+  </div> 
+  <div class="readable-text" id="p180"> 
+   <p>Click the Run Experiment button in the top-right corner to show the code you need to copy and paste into a Python file and then execute. The code provides a simple example of a basic task and evaluator you can run on all the spans in your dataset. Generally, you will want to evaluate LLM responses, but you could also use tool calls, handoffs, and other custom spans you add.</p> 
+  </div> 
+  <div class="readable-text" id="p181"> 
+   <h3 class=" readable-text-h3"><span class="num-string">7.4.4</span> Providing feedback with annotations</h3> 
+  </div> 
+  <div class="readable-text" id="p182"> 
+   <p>Phoenix also provides a powerful mechanism for tracking feedback using annotations. This feedback can be added later through code or tracked directly through the Phoenix dashboard. Before using this feature, though, we must create a set of annotations, as shown in figure 7.11.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p183">  
+   <img alt="" src="../Images/CH07_F11_Lanham4.png" style="width: 100%; max-width: max-content;" width="868" height="452"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.11 Creating a new annotation in Phoenix</span></h5>
+  </div> 
+  <div class="readable-text" id="p184"> 
+   <p>After we create the annotation, we can use it by returning to the Traces page and selecting a span we want to mark with the annotation. In most cases, you will again want to attach annotations to spans that capture LLM responses. Figure 7.12 shows how to add an annotation to a span with an LLM response.</p> 
+  </div> 
+  <div class="browsable-container figure-container " id="p185">  
+   <img alt="" src="../Images/CH07_F12_Lanham4.png" style="width: 100%; max-width: max-content;" width="901" height="465"/> 
+   <h5 class=" figure-container-h5"><span class="">Figure 7.12 Steps to apply an annotation to an LLM response within an agent workflow and across agent and LLM response spans</span></h5>
+  </div> 
+  <div class="readable-text" id="p186"> 
+   <p>Annotations let internal reviewers (developers, QA, domain experts) attach structured labels to specific spans or traces, marking things like “incorrect tool selection,” “good response,” “needs review,” or any custom label that fits your evaluation needs. These annotations get stored alongside the trace data and become queryable signals you can use later.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p187"> 
+   <p>The payoff is that annotations turn ad hoc judgment into structured data. A developer noticing that the agent picked the wrong tool can flag the span, and later you can pull every span flagged with that label, compare them against the unflagged spans, and look for patterns (does it happen on long prompts, with specific tools, after certain types of user queries). Filtering the trace dashboard by annotation lets you cross-­reference quality labels against operational metrics like latency, cost, and token usage to see whether bad responses correlate with specific cost or performance patterns.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p188"> 
+   <p>This is also how informal review becomes a dataset over time. Spans flagged “incorrect” across many sessions become a regression test set: rerun the agent against those inputs after a prompt change and see whether the new version handles them correctly. Without annotation, the same observations live in Slack threads and meeting notes and never become reusable evaluation material.</p> 
+  </div> 
+  <div class="readable-text intended-text" id="p189"> 
+   <p>Incorporating the principles and patterns of evaluation and feedback into your agent development and production cycle not only improves the quality of those agents but also increases their robustness. As a golden rule, you should never promote agents into production systems unless you employ evaluation and feedback patterns.</p> 
+  </div> 
+  <div class="readable-text" id="p190"> 
+   <h2 class=" readable-text-h2"><span class="num-string">7.5</span> Exercises</h2> 
+  </div> 
+  <div class="readable-text" id="p191"> 
+   <p>Use the following exercises to improve your knowledge of the material:</p> 
+  </div> 
+  <div class="readable-text" id="p192"> 
+   <p><strong>Exercise 1: Run the baseline TDAD RAG benchmarks.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p193"> 
+   <p><em>Objectiv</em><em>e</em>: Run the starter RAG agent and observe the initial benchmark behavior (which fails). </p> 
+  </div> 
+  <div class="readable-text" id="p194"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p195">Open listing 7.1 and save a copy as exercise1_tdad_baseline.py.</li> 
+   <li class="readable-text" id="p196">Run the script once. Note the answers and pass/fail for each benchmark.</li> 
+   <li class="readable-text" id="p197">Run it two more times to check variability.</li> 
+   <li class="readable-text" id="p198">Add a short comment at the bottom summarizing pass rate across the three runs (e.g., “Run1: 0/5, Run2: 1/5, Run3: 0/5”).</li> 
+  </ol> 
+  <div class="readable-text" id="p199"> 
+   <p><em>Expected duration</em>: 10 min</p> 
+  </div> 
+  <div class="readable-text" id="p200"> 
+   <p><strong>Exercise 2: Refactor for higher pass rate (tool and prompt tweaks).</strong></p> 
+  </div> 
+  <div class="readable-text" id="p201"> 
+   <p><em>Objectiv</em><em>e</em>: Improve correctness by refining instructions and clarifying tool usage.</p> 
+  </div> 
+  <div class="readable-text" id="p202"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p203">Duplicate your previous file to exercise2_refactor_rag.py. </li> 
+   <li class="readable-text" id="p204">Update the agent instructions as in listing 7.2 (for example, mention breaking down the query; optionally constrain the answers to single words).</li> 
+   <li class="readable-text" id="p205">Rename and implement the <code>keyword</code> tool exactly as in listing 7.4 (<code>search_knowledge_by_keyword</code>) and register it with the agent.</li> 
+   <li class="readable-text" id="p206">Pin the model to <code>model=</code><code>"</code><code>gpt-5</code><code>"</code><code>.</code></li> 
+   <li class="readable-text" id="p207">Run the benchmarks three times. Record pass rate each time and keep the best output sample in a comment. Aim for ≥ 80% on at least one run.</li> 
+  </ol> 
+  <div class="readable-text" id="p208"> 
+   <p><em>Expected duration</em>: 12 min</p> 
+  </div> 
+  <div class="readable-text" id="p209"> 
+   <p><strong>Exercise 3: Add a typed evaluation agent.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p210"> 
+   <p><em>Objectiv</em><em>e</em>: Evaluate answers with a second agent that returns a typed pass/fail result plus feedback.</p> 
+  </div> 
+  <div class="readable-text" id="p211"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p212">Copy your file to exercise3_evaluation_agent.py.</li> 
+   <li class="readable-text" id="p213">Add <code>EvaluationOutput</code> and the evaluation agent exactly as in listing 7.5.</li> 
+   <li class="readable-text" id="p214">Modify the loop to call the evaluator as in listing 7.6 and print <code>is_correct</code> <code>and feedback</code>.</li> 
+   <li class="readable-text" id="p215">Run once; then run again to compare consistency.</li> 
+   <li class="readable-text" id="p216">Add a comment summarizing (a) total correct, and (b) one useful piece of evaluator feedback.</li> 
+  </ol> 
+  <div class="readable-text" id="p217"> 
+   <p><em>Expected duration</em>: 12 min</p> 
+  </div> 
+  <div class="readable-text" id="p218"> 
+   <p><strong>Exercise 4: Enforce grounding with an output guardrail.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p219"> 
+   <p><em>Objectiv</em><em>e</em>: Block ungrounded answers using a grounding agent and a guardrail.</p> 
+  </div> 
+  <div class="readable-text" id="p220"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p221">Duplicate your file to exercise4_grounding_guardrail.py.</li> 
+   <li class="readable-text" id="p222">Implement <code>get_last_context</code>, <code>GroundedAnswer</code>, and <code>grounding_agent</code> as in listing 7.7.</li> 
+   <li class="readable-text" id="p223">Add the output guardrail function from listing 7.9 and register it on the RAG agent.</li> 
+   <li class="readable-text" id="p224">Wrap the run loop as shown in listing 7.10 to catch <code>OutputGuardrailTripwireTriggered</code>. On trip, print the guardrail info and return <code>"</code><code>No</code> <code>grounded</code> <code>answer available.</code><code>"</code>.</li> 
+   <li class="readable-text" id="p225">Run once. Verify at least one question prints “Guardrail tripped” (or confirm all pass grounded checks).</li> 
+  </ol> 
+  <div class="readable-text" id="p226"> 
+   <p><em>Expected duration</em>: 15 min </p> 
+  </div> 
+  <div class="readable-text" id="p227"> 
+   <p><strong>Exercise 5: Trace and triage with Phoenix.</strong></p> 
+  </div> 
+  <div class="readable-text" id="p228"> 
+   <p><em>Objectiv</em><em>e</em>: Capture traces with Phoenix, attach metadata, and annotate one span.</p> 
+  </div> 
+  <div class="readable-text" id="p229"> 
+   <p><em>Tasks</em>:</p> 
+  </div> 
+  <ol> 
+   <li class="readable-text" id="p230">Copy your latest file to exercise5_phoenix_tracing.py.</li> 
+   <li class="readable-text" id="p231">Add the Phoenix setup from listing 7.13 (set <code>PHOENIX_COLLECTOR_ENDPOINT</code>, clear trace processors, register project with <code>project_name="agents")</code>, and wrap runs with<code> trace(</code><code>"</code><code>RAG</code> <code>Benchmarks</code><code>"</code><code>)</code>).</li> 
+   <li class="readable-text" id="p232">Add session plus metadata from listing 7.14 using <code>using_session(</code><code>"</code><code>sess-07</code><code>"</code><code>)</code> and <code>using_metadata({</code><code>"</code><code>run_id</code><code>"</code><code>:</code><code>"</code><code>ch7-ex5</code><code>"</code><code>,</code><code>"</code><code>env</code><code>"</code><code>:</code><code>"</code><code>dev</code><code>"</code><code>,</code><code>"</code><code>model</code><code>"</code><code>:</code><code>"</code><code>gpt-5</code><code>"</code><code>})</code>. </li> 
+   <li class="readable-text" id="p233">(Optional) Start Phoenix locally with the provided Docker command. Run the script once.</li> 
+   <li class="readable-text" id="p234">In Phoenix, select Agents project &gt; Traces. Filter by <code>run_id = ch7-ex5</code>, select any LLM span, and add an annotation (e.g., <code>correctness=pass</code> or <code>correctness=fail</code>).</li> 
+  </ol> 
+  <div class="readable-text" id="p235"> 
+   <p><em>Expected duration</em>: 15 min</p> 
+  </div> 
+  <div class="readable-text" id="p236"> 
+   <h2 class=" readable-text-h2">Summary</h2> 
+  </div> 
+  <ul> 
+   <li class="readable-text" id="p237">Robust agents require evaluation and feedback baked in from the start. Tie the Learn step of sense-plan-act-learn to external evaluators, a feedback store, and (optionally) a monitoring/alerting feedback agent.</li> 
+   <li class="readable-text" id="p238">Use a mix of methods: red team testing for safety breaks, benchmark testing for goal attainment, human feedback (thumbs/comments) with verification to reduce bias, and automated evaluators (grounding/critic/evaluation agents) where appropriate.</li> 
+   <li class="readable-text" id="p239">Test-driven agent development (TDAD) flips the process: define benchmarks (including wrong examples), expect initial failures, and run each test multiple times for consistency. Then make the minimum prompt, tool, or model changes needed to pass, retest, and refactor iteratively.</li> 
+   <li class="readable-text" id="p240">When benchmarks conflict, decide explicitly: accept partial pass targets, split into specialized agents (plus triage), or refactor the agent’s instructions from first principles.</li> 
+   <li class="readable-text" id="p241">Prefer tool guidance in the tool’s name/docstring over prompt clutter; rename tools and write clear docstrings; keep prompts lean and role focused.</li> 
+   <li class="readable-text" id="p242">Add evaluation agents to score complex, natural-language outputs with typed results (e.g., pass/fail plus feedback), avoiding brittle string matching and enabling programmatic gating.</li> 
+   <li class="readable-text" id="p243">Grounding agents are essential for RAG; they verify that answers are supported by the provided context or citations. On failure, they can regenerate, block with a static response, or pass grounded feedback forward.</li> 
+   <li class="readable-text" id="p244">Guardrails operationalize grounding. Wrap agents with output guardrails that trip on ungrounded answers and surface feedback and flags for policy (retry, block, or annotate).</li> 
+   <li class="readable-text" id="p245">Rubrics turn subjective quality into criteria and scales. Use them with critic agents for high-variance generation (images, reports, graphs). Loop generation critique until a passing score or attempt limit.</li> 
+   <li class="readable-text" id="p246">Because LLMs are stochastic, benchmark for stability, not just accuracy, by rerunning tests and watching variability, latency, and token use.</li> 
+   <li class="readable-text" id="p247">Observability is nonnegotiable: OpenAI Traces show every tool call and LLM turn; Arize Phoenix (OpenTelemetry) adds projects, sessions, metrics, costs, experiments, and evaluators.</li> 
+   <li class="readable-text" id="p248">Instrument Phoenix cleanly: set the collector endpoint, replace the default processors, register a tracer, and wrap runs with named traces. Attach sessions and metadata for filtering and cohort analysis.</li> 
+   <li class="readable-text" id="p249">Build datasets from spans, run experiments/evaluators, and use annotations to capture structured human feedback. Feed these signals back into prompts, tools, and policies. </li> 
+   <li class="readable-text" id="p250">Production rule: never promote agents without active evaluation/feedback loops, benchmarks, grounding/guardrails, critics with rubrics, tracing, and monitored KPIs (latency, cost, quality) working together.</li> 
+  </ul>
+ </div></div></body></html>
